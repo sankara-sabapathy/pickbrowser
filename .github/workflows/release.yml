@@ -1,0 +1,76 @@
+name: Release
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# Never interrupt a release partway through uploading assets.
+concurrency:
+  group: release-master
+  cancel-in-progress: false
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/master'
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Choose version
+        id: version
+        run: |
+          VERSION=$(python3 scripts/release-version.py)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" --json isDraft --jq '.isDraft == false' 2>/dev/null | grep -qx true; then
+            echo 'published=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate and test
+        if: steps.version.outputs.published != 'true'
+        run: |
+          python3 scripts/test-release.py
+          python3 scripts/check-site.py
+          bash scripts/test.sh
+      - name: Prepare signing
+        if: steps.version.outputs.published != 'true'
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          REQUIRE_NOTARIZATION: ${{ vars.REQUIRE_NOTARIZATION }}
+        run: bash scripts/prepare-signing.sh
+      - name: Build universal app
+        if: steps.version.outputs.published != 'true'
+        env:
+          PICKBROWSER_VERSION: ${{ steps.version.outputs.version }}
+        run: bash scripts/build-app.sh --universal
+      - name: Notarize when configured, archive, and sign updates
+        if: steps.version.outputs.published != 'true'
+        env:
+          PICKBROWSER_VERSION: ${{ steps.version.outputs.version }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: bash scripts/release-artifacts.sh
+      - name: Publish immutable versioned release
+        if: steps.version.outputs.published != 'true'
+        env:
+          PICKBROWSER_VERSION: ${{ steps.version.outputs.version }}
+        run: bash scripts/publish-release.sh
+      - name: Remove temporary signing keychain
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/pickbrowser-signing.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/pickbrowser-signing.keychain-db"
+          fi

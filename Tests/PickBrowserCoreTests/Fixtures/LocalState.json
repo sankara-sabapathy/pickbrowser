@@ -1,0 +1,12 @@
+{
+  "profile": {
+    "info_cache": {
+      "Default": { "name": "Personal" },
+      "Profile 1": { "name": "Work" },
+      "Profile 2": { "name": "", "is_ephemeral": true },
+      "Profile 3": { "name": "Hidden", "is_omitted_from_profile_list": true },
+      "Guest Profile": { "name": "Guest" },
+      "../escape": { "name": "Unsafe" }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#162322">
+  <meta name="description" content="Hover over a link. Choose a browser profile. PickBrowser is a free, open-source macOS menu-bar app that leaves your default browser alone.">
+  <title>PickBrowser — Hover. Choose. Open.</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23162322'/%3E%3Cpath d='M9 7v18l5-6 7 5 3-4-7-5 7-3z' fill='%23e5ff99'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="release.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header>
+    <a class="brand" href="./" aria-label="PickBrowser home"><span class="mark" aria-hidden="true">↖</span> PickBrowser</a>
+    <a href="https://github.com/sankara-sabapathy/pickbrowser">View on GitHub <span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main">
+    <section class="hero" aria-labelledby="headline">
+      <div class="intro">
+        <p class="eyebrow">A LITTLE UTILITY FOR YOUR MAC</p>
+        <h1>One link.<br>Your choice.</h1>
+        <p class="lede">Work in Chrome. Personal in Brave. Something else in Safari. Hover over a link and choose where it opens.</p>
+        <a class="download" id="download" href="https://github.com/sankara-sabapathy/pickbrowser/releases/latest"><span aria-hidden="true">↓</span> Download for Mac</a>
+        <p class="requirements">macOS 14+ · Apple silicon &amp; Intel · Free forever</p>
+        <p class="release" id="release-status" aria-live="polite">Get the latest version on GitHub.</p>
+      </div>
+      <figure class="product">
+        <div class="source-line"><span class="source-label">A link, wherever you work</span><span class="example-link">example.com</span></div>
+        <img src="picker.png" width="300" height="225" alt="PickBrowser picker showing Chrome Work, Chrome Personal, Brave Personal, and Safari for example.com">
+        <figcaption>Hover. Choose. Open.<br><span>Your existing profiles, in one small picker.</span></figcaption>
+      </figure>
+    </section>
+    <section class="details" aria-label="Getting started">
+      <div class="step"><span class="number">01 / ALLOW</span><h2>One permission.</h2><p>Move PickBrowser to Applications, open it, and enable Accessibility. Your browsers and profiles appear automatically.</p></div>
+      <div class="step"><span class="number">02 / HOVER</span><h2>Pause on a link.</h2><p>The picker appears after half a second. Make it faster or slower in Settings. Move away and it disappears.</p></div>
+      <div class="step"><span class="number">03 / CHOOSE</span><h2>Straight to your profile.</h2><p>Click a destination. No nested menus. Ordinary clicks still work as before. Your default browser stays yours.</p></div>
+    </section>
+    <section class="fine-print" aria-label="Compatibility and privacy">
+      <div><h2>Small by design.</h2><p>No accounts. No telemetry. No saved links. Optional update checks are off by default, and you choose when to install.</p></div>
+      <div><h2>Honest about its limits.</h2><p>Chrome, Edge, and Brave profiles; Safari as a browser. Link detection depends on each app’s Accessibility support. If a destination isn’t exposed, PickBrowser stays quiet. macOS only for now.</p><a href="https://github.com/sankara-sabapathy/pickbrowser/blob/master/docs/COMPATIBILITY.md">Compatibility &amp; testing notes ↗</a></div>
+    </section>
+    <p class="distribution" id="distribution-note">Early release: not yet Apple-notarized. macOS may block the download. Don’t disable security protections; <a href="https://github.com/sankara-sabapathy/pickbrowser#build-and-run">build from source</a> if needed.</p>
+  </main>
+  <footer><span>PickBrowser <span class="footer-dot">/</span> Open source. MIT licensed.</span><nav aria-label="Project links"><a href="https://github.com/sankara-sabapathy/pickbrowser/blob/master/docs/PRIVACY.md">Privacy</a><a href="https://github.com/sankara-sabapathy/pickbrowser/releases">Releases</a><a href="https://github.com/sankara-sabapathy/pickbrowser/issues">Report an issue</a></nav></footer>
+</body>
+</html>
