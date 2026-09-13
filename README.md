@@ -6,6 +6,10 @@ Hover. Choose. Open.
 
 PickBrowser is an open-source macOS menu-bar utility that offers a browser and profile picker when you hover over a supported hyperlink for half a second. Choose **Chrome · Work**, **Brave · Personal**, **Safari**, or another detected destination in one click. Your default browser and ordinary link clicks stay unchanged.
 
+![PickBrowser app preview showing the link preview, copy and browser-tab controls, and browser profiles](site/picker.png)
+
+*A preview of the picker with example browser profiles.*
+
 **Status: early release, with automated packaging and signed in-app updates.** The first public builds are ad-hoc signed, not Apple-notarized; macOS may block downloaded copies. Do not disable security protections. Apple release credentials and full real-app acceptance are still required for production distribution. Accessibility permission does not make every application's links readable. PickBrowser stays silent when it cannot verify a hyperlink destination. See [compatibility and manual acceptance](docs/COMPATIBILITY.md).
 
 ## Build and run
