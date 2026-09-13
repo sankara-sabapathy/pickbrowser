@@ -23,12 +23,21 @@ public struct HoverCoordinator {
     private var request: DetectionRequest?
     private var generation: UInt64 = 0
     private var suppressedBounds: CGRect?
-    public let dwell: TimeInterval
+    public private(set) var dwell: TimeInterval
     public let dismissalGrace: TimeInterval
 
     public init(dwell: TimeInterval = 0.5, dismissalGrace: TimeInterval = 0.25) {
         self.dwell = HoverTiming.validated(dwell)
         self.dismissalGrace = dismissalGrace
+    }
+
+    public mutating func updateDwell(_ value: TimeInterval) -> [HoverAction] {
+        let delay = HoverTiming.validated(value)
+        guard delay != dwell else { return [] }
+        dwell = delay
+        // Preserve request generation across preference changes; replacing the
+        // coordinator could allow an old completion to match a new request ID.
+        return reset()
     }
 
     public mutating func tick(point: CGPoint, sourceID newSource: String,
@@ -139,19 +148,90 @@ public enum HoverTiming {
 }
 
 public enum PickerPlacement {
-    public static func frame(size: CGSize, link: CGRect, screen: CGRect) -> CGRect {
-        let gap: CGFloat = 8
-        let width = min(size.width, screen.width)
-        let height = min(size.height, screen.height)
-        var origin = CGPoint(x: link.minX, y: link.minY - gap - height)
-        if origin.y < screen.minY { origin.y = link.maxY + gap }
-        // Very tall links: prefer the side before clamping to the visible screen.
-        if origin.y + height > screen.maxY {
-            origin = CGPoint(x: link.maxX + gap, y: link.maxY - height)
-            if origin.x + width > screen.maxX { origin.x = link.minX - gap - width }
+    /// Places the picker adjacent to the pointer captured when it was shown.
+    /// Coordinates are AppKit global screen coordinates, so “below” decreases Y.
+    public static func frame(size: CGSize, cursor: CGPoint, screen: CGRect, gap: CGFloat = 10) -> CGRect {
+        let visible = screen.standardized
+        guard visible.width.isFinite, visible.height.isFinite,
+              visible.origin.x.isFinite, visible.origin.y.isFinite,
+              cursor.x.isFinite, cursor.y.isFinite,
+              visible.width > 0, visible.height > 0 else { return .zero }
+
+        let width = min(max(size.width.isFinite ? size.width : 0, 0), visible.width)
+        let height = min(max(size.height.isFinite ? size.height : 0, 0), visible.height)
+        let spacing = max(gap.isFinite ? gap : 10, 0)
+        let dimensions = CGSize(width: width, height: height)
+
+        // Prefer the lower-right quadrant. The remaining order keeps the picker
+        // adjacent to the pointer while adapting to the nearest usable edge.
+        let preferredOrigins = [
+            CGPoint(x: cursor.x + spacing, y: cursor.y - spacing - height),
+            CGPoint(x: cursor.x + spacing, y: cursor.y + spacing),
+            CGPoint(x: cursor.x - spacing - width, y: cursor.y - spacing - height),
+            CGPoint(x: cursor.x - spacing - width, y: cursor.y + spacing)
+        ]
+        let preferredFrames = preferredOrigins.map { CGRect(origin: $0, size: dimensions) }
+        if let fitting = preferredFrames.first(where: { visible.contains($0) }) {
+            return fitting
         }
-        origin.x = min(max(origin.x, screen.minX), screen.maxX - width)
-        origin.y = min(max(origin.y, screen.minY), screen.maxY - height)
-        return CGRect(origin: origin, size: CGSize(width: width, height: height))
+
+        let candidates = preferredFrames.enumerated().map { index, preferred in
+            (index, clamp(preferred, to: visible), preferred.origin)
+        }
+        // On very small screens no quadrant can fit unchanged. Favor an
+        // adjacent, non-overlapping frame, then the closest clamped origin.
+        let nearest = candidates.min { lhs, rhs in
+            let lhsOverlaps = lhs.1.contains(cursor)
+            let rhsOverlaps = rhs.1.contains(cursor)
+            if lhsOverlaps != rhsOverlaps { return !lhsOverlaps }
+
+            let lhsDistance = squaredDistance(lhs.1, to: cursor)
+            let rhsDistance = squaredDistance(rhs.1, to: cursor)
+            if lhsDistance != rhsDistance { return lhsDistance < rhsDistance }
+
+            let lhsClamp = squaredDistance(lhs.1.origin, lhs.2)
+            let rhsClamp = squaredDistance(rhs.1.origin, rhs.2)
+            if lhsClamp != rhsClamp { return lhsClamp < rhsClamp }
+            return lhs.0 < rhs.0
+        }?.1 ?? CGRect(origin: visible.origin, size: dimensions)
+        if !nearest.contains(cursor) { return nearest }
+
+        // If the original panel would cover the pointer, shrink onto the largest
+        // available side. The destination list scrolls rather than swallowing the hover.
+        let sides = [
+            CGRect(x: cursor.x + spacing, y: visible.minY,
+                   width: max(0, visible.maxX - cursor.x - spacing), height: visible.height),
+            CGRect(x: visible.minX, y: visible.minY, width: visible.width,
+                   height: max(0, cursor.y - spacing - visible.minY)),
+            CGRect(x: visible.minX, y: visible.minY,
+                   width: max(0, cursor.x - spacing - visible.minX), height: visible.height),
+            CGRect(x: visible.minX, y: cursor.y + spacing, width: visible.width,
+                   height: max(0, visible.maxY - cursor.y - spacing))
+        ].map { $0.intersection(visible) }.filter { !$0.isEmpty && !$0.isNull }
+        guard let side = sides.max(by: {
+            min($0.width, width) * min($0.height, height) < min($1.width, width) * min($1.height, height)
+        }) else { return .zero }
+        return clamp(CGRect(x: cursor.x + spacing, y: cursor.y - spacing - min(height, side.height),
+                            width: min(width, side.width), height: min(height, side.height)), to: side)
+    }
+
+    private static func clamp(_ frame: CGRect, to screen: CGRect) -> CGRect {
+        let x = min(max(frame.minX, screen.minX), screen.maxX - frame.width)
+        let y = min(max(frame.minY, screen.minY), screen.maxY - frame.height)
+        return CGRect(x: x, y: y, width: frame.width, height: frame.height)
+    }
+
+    private static func squaredDistance(_ frame: CGRect, to point: CGPoint) -> CGFloat {
+        let x = min(max(point.x, frame.minX), frame.maxX)
+        let y = min(max(point.y, frame.minY), frame.maxY)
+        let dx = point.x - x
+        let dy = point.y - y
+        return dx * dx + dy * dy
+    }
+
+    private static func squaredDistance(_ first: CGPoint, _ second: CGPoint) -> CGFloat {
+        let dx = first.x - second.x
+        let dy = first.y - second.y
+        return dx * dx + dy * dy
     }
 }

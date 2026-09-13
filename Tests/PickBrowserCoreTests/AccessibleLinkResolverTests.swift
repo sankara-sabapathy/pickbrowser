@@ -17,8 +17,59 @@ struct AccessibleLinkResolverTests {
         let result = AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "app:1", point: point)
         #expect(result.candidate?.url == url)
         #expect(result.candidate?.sourceID == "app:1")
-        #expect(result.roles == ["AXStaticText", "AXLink"])
+        #expect(result.candidate?.isWebContent == true)
+        #expect(result.roles == ["AXStaticText", "AXLink", "AXWebArea"])
         #expect(tree.urlReads == [1])
+    }
+
+    @Test func ordinaryNamedContentLinkPassesAfterContextInspection() {
+        let tree = FakeTree(nodes: [
+            0: Node(role: "AXStaticText", parent: 1),
+            1: Node(role: "AXLink", url: url, bounds: bounds, parent: 2),
+            2: Node(role: "AXGroup", parent: 3),
+            3: Node(role: "AXWebArea")
+        ])
+        let result = AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "app:1", point: point)
+        #expect(result.candidate?.url == url)
+        #expect(result.candidate?.isWebContent == true)
+        #expect(result.outcome == .linkFound)
+        #expect(result.roles == ["AXStaticText", "AXLink", "AXGroup", "AXWebArea"])
+    }
+
+    @Test func navigationLandmarkIsExcludedByDefaultAndAllowedWhenOptedIn() {
+        let tree = FakeTree(nodes: [
+            0: Node(role: "AXLink", url: url, bounds: bounds, parent: 1),
+            1: Node(role: "AXGroup", subrole: "AXLandmarkNavigation", parent: 2),
+            2: Node(role: "AXWebArea")
+        ])
+        let filtered = AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "app:1", point: point)
+        #expect(filtered.candidate == nil)
+        #expect(filtered.outcome == .filteredControl)
+        let included = AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "app:1", point: point,
+                                                      includeNavigationLinks: true)
+        #expect(included.candidate?.url == url)
+        #expect(included.candidate?.isWebContent == true)
+        #expect(included.outcome == .linkFound)
+    }
+
+    @Test func buttonAncestorIsExcludedButCannotCreateALink() {
+        let linkedTree = FakeTree(nodes: [
+            0: Node(role: "AXStaticText", parent: 1),
+            1: Node(role: "AXLink", url: url, bounds: bounds, parent: 2),
+            2: Node(role: "AXButton", parent: 3),
+            3: Node(role: "AXWebArea")
+        ])
+        let filtered = AccessibleLinkResolver.resolve(hit: 0, tree: linkedTree, sourceID: "app:1", point: point)
+        #expect(filtered.outcome == .filteredControl)
+        let buttonOnlyTree = FakeTree(nodes: [
+            0: Node(role: "AXButton", url: url, bounds: bounds, parent: 1),
+            1: Node(role: "AXWebArea")
+        ])
+        let buttonOnly = AccessibleLinkResolver.resolve(hit: 0, tree: buttonOnlyTree, sourceID: "app:1", point: point,
+                                                        includeNavigationLinks: true)
+        #expect(buttonOnly.candidate == nil)
+        #expect(buttonOnly.outcome == .noLink)
+        #expect(buttonOnlyTree.urlReads.isEmpty)
     }
 
     @Test func containingDocumentURLIsNeverReadOrUsed() {
@@ -31,6 +82,32 @@ struct AccessibleLinkResolverTests {
         #expect(result.candidate == nil)
         #expect(result.outcome == .noLink)
         #expect(tree.urlReads.isEmpty)
+    }
+
+    @Test func toolbarAndMenuContextsAreOptionalWithoutReadingTheirURL() {
+        for role in ["AXButton", "AXMenu", "AXMenuBar", "AXMenuItem", "AXToolbar", "AXTab", "AXTabGroup"] {
+            let tree = FakeTree(nodes: [
+                0: Node(role: "AXLink", url: url, bounds: bounds, parent: 1),
+                1: Node(role: role, url: URL(string: "https://example.com/not-the-link"), parent: 2),
+                2: Node(role: "AXWindow")
+            ])
+            #expect(AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "app:1", point: point).candidate == nil)
+            let allowed = AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "app:1", point: point,
+                                                        includeNavigationLinks: true)
+            #expect(allowed.candidate?.url == url)
+            #expect(allowed.candidate?.isWebContent == false)
+            #expect(tree.urlReads.allSatisfy { $0 == 0 })
+        }
+    }
+
+    @Test func outerLinkCannotReplaceTheActualHitDestination() {
+        let tree = FakeTree(nodes: [
+            0: Node(role: "AXLink", url: url, bounds: bounds, parent: 1),
+            1: Node(role: "AXLink", url: URL(string: "https://example.com/outer"), bounds: bounds, parent: 2),
+            2: Node(role: "AXWebArea")
+        ])
+        #expect(AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "app:1", point: point).candidate?.url == url)
+        #expect(tree.urlReads == [0])
     }
 
     @Test func explicitLinkWithNonWebSchemeIsRejected() {
@@ -59,11 +136,28 @@ struct AccessibleLinkResolverTests {
         #expect(timeout.roles.isEmpty)
     }
 
+    @Test func incompleteContextAfterALinkFailsClosed() {
+        let cycle = FakeTree(nodes: [
+            0: Node(role: "AXLink", url: url, bounds: bounds, parent: 1),
+            1: Node(role: "AXGroup", parent: 0)
+        ])
+        let cyclicResult = AccessibleLinkResolver.resolve(hit: 0, tree: cycle, sourceID: "app:1", point: point)
+        #expect(cyclicResult.candidate == nil)
+        #expect(cyclicResult.outcome == .filteredControl)
+        let missingRole = FakeTree(nodes: [
+            0: Node(role: "AXLink", url: url, bounds: bounds, parent: 1),
+            1: Node(role: nil)
+        ])
+        let missingRoleResult = AccessibleLinkResolver.resolve(hit: 0, tree: missingRole, sourceID: "app:1", point: point)
+        #expect(missingRoleResult.candidate == nil)
+        #expect(missingRoleResult.outcome == .filteredControl)
+    }
+
     @Test func ancestorBudgetIsBounded() {
         let nodes = Dictionary(uniqueKeysWithValues: (0..<20).map { ($0, Node(role: "AXGroup", parent: $0 + 1)) })
         let result = AccessibleLinkResolver.resolve(hit: 0, tree: FakeTree(nodes: nodes), sourceID: "app:1", point: point)
         #expect(result.outcome == .searchLimit)
-        #expect(result.roles.count == 8)
+        #expect(result.roles.count == 12)
     }
 
     @Test func diagnosticRolesDoNotIncludeArbitraryText() {
@@ -73,7 +167,8 @@ struct AccessibleLinkResolverTests {
     }
 
     private struct Node {
-        let role: String
+        let role: String?
+        var subrole: String? = nil
         var url: URL? = nil
         var bounds: CGRect? = nil
         var parent: Int? = nil
@@ -83,6 +178,7 @@ struct AccessibleLinkResolverTests {
         var urlReads: [Int] = []
         init(nodes: [Int: Node]) { self.nodes = nodes }
         func role(of element: Int) -> String? { nodes[element]?.role }
+        func subrole(of element: Int) -> String? { nodes[element]?.subrole }
         func linkURL(of element: Int) -> URL? { urlReads.append(element); return nodes[element]?.url }
         func bounds(of element: Int) -> CGRect? { nodes[element]?.bounds }
         func parent(of element: Int) -> Int? { nodes[element]?.parent }

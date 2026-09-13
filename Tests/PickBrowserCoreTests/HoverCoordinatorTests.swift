@@ -51,6 +51,18 @@ struct HoverCoordinatorTests {
         #expect(coordinator.resolve(candidate, for: next, time: 0.61).isEmpty)
     }
 
+    @Test func delayChangeCannotReuseAnOutstandingRequestID() throws {
+        var coordinator = HoverCoordinator()
+        let oldRequest = try request(&coordinator)
+        _ = coordinator.updateDwell(0.1)
+        _ = coordinator.tick(point: point, sourceID: source, time: 1, enabled: true)
+        let actions = coordinator.tick(point: point, sourceID: source, time: 1.2, enabled: true)
+        guard case .detect(let newRequest) = actions.first else { Issue.record("Expected new request"); return }
+        #expect(oldRequest != newRequest)
+        #expect(coordinator.resolve(candidate, for: oldRequest, time: 1.21).isEmpty)
+        #expect(coordinator.resolve(candidate, for: newRequest, time: 1.22) == [.present(candidate)])
+    }
+
     @Test func permissionRevocationRejectsPendingResult() throws {
         var coordinator = HoverCoordinator()
         let next = try request(&coordinator)
@@ -172,18 +184,18 @@ struct HoverCoordinatorTests {
 
     @Test func panelPlacementOnNegativeCoordinateDisplay() {
         let screen = CGRect(x: -1920, y: -200, width: 1920, height: 1080)
-        let link = CGRect(x: -60, y: -190, width: 50, height: 20)
-        let panel = PickerPlacement.frame(size: CGSize(width: 300, height: 350), link: link, screen: screen)
+        let cursor = CGPoint(x: -60, y: -190)
+        let panel = PickerPlacement.frame(size: CGSize(width: 300, height: 350), cursor: cursor, screen: screen)
         #expect(screen.contains(panel))
-        #expect(!panel.intersects(link))
+        #expect(!panel.contains(cursor))
     }
 
     @Test func panelPlacementOnDisplayAbovePrimary() {
         let screen = CGRect(x: 0, y: 1080, width: 1920, height: 1080)
-        let link = CGRect(x: 400, y: 1800, width: 100, height: 20)
-        let panel = PickerPlacement.frame(size: CGSize(width: 300, height: 350), link: link, screen: screen)
+        let cursor = CGPoint(x: 400, y: 1800)
+        let panel = PickerPlacement.frame(size: CGSize(width: 300, height: 350), cursor: cursor, screen: screen)
         #expect(screen.contains(panel))
-        #expect(panel.maxY < link.minY)
+        #expect(panel.maxY < cursor.y)
     }
 
     private enum TestError: Error { case noRequest }

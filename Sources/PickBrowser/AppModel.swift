@@ -8,6 +8,8 @@ final class AppModel: ObservableObject {
     @Published var trusted = AXIsProcessTrusted()
     @Published var paused = false
     @Published private(set) var hoverDelay: TimeInterval
+    @Published private(set) var includeNavigationLinks: Bool
+    @Published private(set) var pickerAppearance: PickerAppearance
     @Published var troubleshootingEnabled = false {
         didSet {
             if !troubleshootingEnabled { detectionStatus = "Troubleshooting is off." }
@@ -26,6 +28,13 @@ final class AppModel: ObservableObject {
     init(defaults: UserDefaults = .standard, destinations: [BrowserDestination] = []) {
         self.defaults = defaults
         hoverDelay = HoverTiming.validated(defaults.object(forKey: "hoverDelay") as? Double ?? HoverTiming.defaultDelay)
+        includeNavigationLinks = defaults.bool(forKey: "includeNavigationLinks")
+        if let data = defaults.data(forKey: "pickerAppearance"),
+           let savedAppearance = try? JSONDecoder().decode(PickerAppearance.self, from: data) {
+            pickerAppearance = Self.normalized(savedAppearance)
+        } else {
+            pickerAppearance = PickerAppearance()
+        }
         hiddenIDs = Set(defaults.stringArray(forKey: "hiddenDestinations") ?? [])
         order = defaults.stringArray(forKey: "destinationOrder") ?? []
         self.destinations = destinations
@@ -34,6 +43,32 @@ final class AppModel: ObservableObject {
     func setHoverDelay(_ delay: TimeInterval) {
         hoverDelay = HoverTiming.validated(delay)
         defaults.set(hoverDelay, forKey: "hoverDelay")
+    }
+
+    func setIncludeNavigationLinks(_ include: Bool) {
+        includeNavigationLinks = include
+        defaults.set(include, forKey: "includeNavigationLinks")
+    }
+
+    func setPickerAppearance(_ appearance: PickerAppearance) {
+        let normalizedAppearance = Self.normalized(appearance)
+        pickerAppearance = normalizedAppearance
+        guard let data = try? JSONEncoder().encode(normalizedAppearance) else { return }
+        defaults.set(data, forKey: "pickerAppearance")
+    }
+
+    func resetPickerAppearance() {
+        setPickerAppearance(PickerAppearance())
+    }
+
+    private static func normalized(_ appearance: PickerAppearance) -> PickerAppearance {
+        PickerAppearance(
+            usesCustomColor: appearance.usesCustomColor,
+            red: appearance.red,
+            green: appearance.green,
+            blue: appearance.blue,
+            opacity: appearance.opacity
+        )
     }
 
     var orderedDestinations: [BrowserDestination] {

@@ -6,11 +6,14 @@ public struct LinkCandidate: Equatable {
     public let sourceID: String
     /// Global screen coordinates, increasing upward (AppKit convention on macOS).
     public let bounds: CGRect
+    /// True only when the accessibility ancestry establishes web content.
+    public let isWebContent: Bool
 
-    public init(url: URL, sourceID: String, bounds: CGRect) {
+    public init(url: URL, sourceID: String, bounds: CGRect, isWebContent: Bool = false) {
         self.url = url
         self.sourceID = sourceID
         self.bounds = bounds
+        self.isWebContent = isWebContent
     }
 }
 

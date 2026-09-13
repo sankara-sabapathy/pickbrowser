@@ -154,8 +154,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         guard !launching else { return }
         if coordinator.dwell != model.hoverDelay {
+            handle(coordinator.updateDwell(model.hoverDelay))
+        }
+        if detector.includeNavigationLinks != model.includeNavigationLinks {
             handle(coordinator.reset())
-            coordinator = HoverCoordinator(dwell: model.hoverDelay)
+            detector.includeNavigationLinks = model.includeNavigationLinks
         }
         let point = NSEvent.mouseLocation
         let front = NSWorkspace.shared.frontmostApplication
@@ -176,9 +179,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 picker.contentView = nil // Release the dismissed link and its selection closure.
             case .present(let link):
                 reportDetection("Picker displayed")
-                picker.present(link: link, destinations: model.visibleDestinations) { [weak self] destination in
-                    self?.choose(destination, link: link)
-                }
+                let sourceBrowser = SourceBrowser.forWebpage(link)
+                picker.present(link: link, destinations: model.visibleDestinations,
+                    appearance: model.pickerAppearance,
+                    quickOpenTitle: sourceBrowser?.name,
+                    choose: { [weak self] destination in self?.choose(destination, link: link) },
+                    copy: { [weak self] in self?.copyLink(link) ?? false },
+                    quickOpen: { [weak self] in self?.openInSourceBrowser(link) })
             case .detect(let request):
                 detector.detect(at: request.point, sourceID: request.sourceID) { [weak self] candidate in
                     guard let self else { return }
@@ -192,13 +199,84 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func choose(_ destination: BrowserDestination, link: LinkCandidate) {
-        guard !launching, coordinator.activeLink == link, AXIsProcessTrusted(),
-              NSWorkspace.shared.frontmostApplication.map(MacLinkDetector.sourceID) == link.sourceID else {
-            handle(coordinator.reset())
-            return
-        }
+        guard canAct(on: link) else { return }
         handle(coordinator.dismissAndSuppress(at: NSEvent.mouseLocation, time: ProcessInfo.processInfo.systemUptime))
         launch(link.url, destination: destination)
+    }
+
+    private func canAct(on link: LinkCandidate) -> Bool {
+        guard !launching, coordinator.activeLink == link, AXIsProcessTrusted(), !model.paused,
+              NSWorkspace.shared.frontmostApplication.map(MacLinkDetector.sourceID) == link.sourceID else {
+            handle(coordinator.reset())
+            return false
+        }
+        return true
+    }
+
+    private func copyLink(_ link: LinkCandidate) -> Bool {
+        guard canAct(on: link) else { return false }
+        // Explicit Copy is the only clipboard operation. Never inspect existing contents.
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if !pasteboard.setString(link.url.absoluteString, forType: .string) {
+            handle(coordinator.reset())
+            let alert = NSAlert()
+            alert.messageText = "Couldn’t copy the link"
+            alert.informativeText = "The clipboard is unavailable. Please try again."
+            launching = true
+            alert.runModal()
+            launching = false
+            return false
+        }
+        return true
+    }
+
+    private func openInSourceBrowser(_ link: LinkCandidate) {
+        guard canAct(on: link), let browser = SourceBrowser.forWebpage(link),
+              let source = NSWorkspace.shared.frontmostApplication,
+              source.bundleIdentifier == browser.rawValue, let applicationURL = source.bundleURL else { return }
+        handle(coordinator.dismissAndSuppress(at: NSEvent.mouseLocation, time: ProcessInfo.processInfo.systemUptime))
+        launchInSourceBrowser(link.url, applicationURL: applicationURL, browser: browser)
+    }
+
+    private func launchInSourceBrowser(_ url: URL, applicationURL: URL, browser: SourceBrowser) {
+        guard WebURL.validated(url.absoluteString) != nil,
+              Bundle(url: applicationURL)?.bundleIdentifier == browser.rawValue else {
+            reportSourceBrowserFailure(url, applicationURL: applicationURL, browser: browser,
+                message: "The source browser is no longer available at its original location.")
+            return
+        }
+        launching = true
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        // Deliver one URL to the exact source browser. No Apple Events, synthesized
+        // keyboard input, or default-browser fallback. Its tab/profile policy applies.
+        NSWorkspace.shared.open([url], withApplicationAt: applicationURL, configuration: configuration) { [weak self] _, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.launching = false
+                guard let error else { return }
+                self.reportSourceBrowserFailure(url, applicationURL: applicationURL,
+                    browser: browser, message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func reportSourceBrowserFailure(_ url: URL, applicationURL: URL, browser: SourceBrowser, message: String) {
+        let alert = NSAlert()
+        alert.messageText = "Couldn’t open in \(browser.name)"
+        alert.informativeText = message
+        alert.addButton(withTitle: "Retry")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        launching = true
+        let response = alert.runModal()
+        launching = false
+        if response == .alertFirstButtonReturn {
+            DispatchQueue.main.async { [weak self] in
+                self?.launchInSourceBrowser(url, applicationURL: applicationURL, browser: browser)
+            }
+        }
     }
 
     private func launch(_ url: URL, destination: BrowserDestination) {

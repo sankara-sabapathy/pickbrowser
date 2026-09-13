@@ -2,6 +2,13 @@
 
 This initial implementation is **not yet certified against real source applications**. Installation or compilation is not a passing hover test. Record the macOS, source-app, and destination-browser versions for every run. Use a packaged `.app` with Accessibility access enabled.
 
+## v0.2.1 verification — 2026-09-13
+
+- 49 Swift tests pass, including cursor-adjacent placement across display edges, conservative navigation filtering, webpage-only shortcut eligibility, appearance validation, and stale-request rejection when changing dwell.
+- Synthetic light/dark picker previews were inspected, including custom tints and the absence of the tab shortcut for non-browser sources.
+- The v0.2.1 universal app compiled for arm64 and x86_64; its nested ad-hoc signatures passed verification. Apple notarization and Intel execution remain unverified.
+- These tests do not certify real-app navigation semantics, clipboard interaction, tab/profile routing, actual display behavior, or accessibility permission recovery. Those remain manual acceptance items.
+
 ## v0.2 verification — 2026-09-12
 
 - 33 Swift tests pass, including the previously sticky area between the link and the wider picker, gap traversal/dismissal, and configurable dwell limits.
@@ -52,6 +59,11 @@ Test Safari with its normal settings and confirm it receives the URL; its extern
 
 ## Interaction checklist
 
+- Hover near the beginning, middle, and end of a long link: the picker stays beside the pointer, not the start of the link. Repeat near all display edges and with negative-origin displays.
+- Named content links still qualify. Semantically marked navigation, menus, toolbars, and button-like links are excluded by default; opt in and confirm only genuine hyperlinks qualify. Plain buttons with URL metadata must remain excluded.
+- Copy a link: one explicit clipboard write, visible checkmark, no browser launch. Move away: normal dismissal. Confirm no clipboard reads during detection.
+- The tab shortcut is absent in Mail/Slack/Teams and browser non-web controls, present on supported browser webpages. It dispatches once to the same browser; test browser-specific tab/profile policy separately.
+- Change background opacity/color, relaunch, and verify persistence and opaque readable text in light/dark mode. Enable macOS Reduce Transparency and verify a solid background. Reset restores defaults.
 - Hover for less than 500 ms: no picker. Keep still for at least 500 ms: one picker on a supported link.
 - Set a custom delay (0.1, 1.7, and 5 seconds), relaunch, and verify persistence and actual dwell. Change the delay while detection is pending: no stale picker.
 - Move during a slow AX lookup or switch applications: no stale picker appears.

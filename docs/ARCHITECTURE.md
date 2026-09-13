@@ -15,7 +15,7 @@ PickBrowser is a Swift Package Manager executable, packaged as an unsandboxed ma
 
 ## Hover and detection
 
-The host samples the pointer at 20 Hz. After the configured delay (default 500 ms, range 100–5000 ms) within a four-point radius, it hit-tests Accessibility on a serial worker. A delay change resets the coordinator and invalidates pending work. At most one AX lookup runs at once. Lookup reads have short timeouts, at most eight elements are examined, and a total elapsed-time budget stops traversal. These limits keep a slow app from blocking the main thread or growing a worker backlog.
+The host samples the pointer at 20 Hz. After the configured delay (default 500 ms, range 100–5000 ms) within a four-point radius, it hit-tests Accessibility on a serial worker. A delay change resets the coordinator without resetting its request generation, invalidating pending work without reusing request IDs. At most one AX lookup runs at once. Lookup reads have short timeouts, at most twelve elements are examined, and a total elapsed-time budget stops traversal. These limits keep a slow app from blocking the main thread or growing a worker backlog.
 
 Before hit-testing, read the source application's role to activate native accessibility in Chromium. Never write `AXManualAccessibility` or `AXEnhancedUserInterface`: Electron maps these to full screen-reader mode, which triggers editor prompts and can change application behavior. Do not switch VoiceOver, change editor settings, or turn off another assistive client's support. Apps that require forced screen-reader mode to expose their links remain unsupported. Read-only accessibility queries can still cause some applications to infer assistive-technology use; PickBrowser cannot control those heuristics.
 
@@ -25,9 +25,13 @@ References: [Chromium application-role activation](https://github.com/chromium/c
 
 Only an `AXLink` with an explicit URL attribute (or a URL-valued value attribute on that same link) qualifies. Generic text, the containing document's URL, custom schemes, and missing/empty geometry are rejected. No entire accessibility tree is scraped. The AX Y axis is converted once against the primary display into AppKit global coordinates; negative and vertically stacked display coordinates remain valid.
 
+Bounded ancestor inspection continues above the nearest link to exclude button, menu, toolbar, tab, and navigation-landmark contexts by default. The navigation setting permits those contexts but never converts a plain button URL into hyperlink evidence. Visible link wording is not a filter. CSS-only appearance cannot reliably establish navigation intent. Encountering an `AXWebArea` records webpage provenance for the source-browser shortcut. Incomplete or timed-out inspection is rejected conservatively.
+
 Request generation and source identity include the source PID. Moving the pointer, switching applications, revoking permission, pausing, clicking, or scrolling invalidates outstanding work. Callbacks recheck the current state before showing UI. Unsupported elements produce no UI and can be retried after another dwell interval.
 
 The picker uses a nonactivating panel on the current display, including full-screen spaces. Only the actual link and panel rectangles keep it open, never their enclosing rectangle. Leaving both for 250 ms dismisses the panel; that grace period permits traversal across the gap. Selecting, Escape, or source scrolling suppresses that link until the pointer leaves it. Destination-list scrolling stays local. Input is observed passively; source-app clicks are not redirected or synthesized.
+
+Placement uses the current cursor at presentation, not the start of the link rectangle. It tries nearby quadrants, clamps within the pointer display's visible frame, and reduces the panel if necessary on unusually small displays. It does not chase the cursor after opening. Background opacity is separate from foreground content; custom tint uses a material backing and contrast-aware text. Reduce Transparency uses an opaque background.
 
 ## Profiles and launching
 
@@ -37,8 +41,10 @@ Before Chromium launch, revalidate the app, executable, metadata entry, and prof
 
 Warm launches usually forward the URL and exit; cold launches can remain alive. Early nonzero exits produce an error. A process still alive after 1.5 seconds counts as successful dispatch. This is **not proof of page load or correct routing**; manual browser tests are required. Safari uses `NSWorkspace` with an explicit application URL. Errors offer Retry for the same destination, or Cancel. Browser stdout/stderr is discarded so URLs are not captured by PickBrowser.
 
+The header Copy action only writes the verified URL after checking that the displayed candidate is still active. The tab shortcut appears only for supported browser sources with webpage evidence. It sends one URL through `NSWorkspace` to the exact source application, with no fallback, Apple Events, or simulated keystrokes. Browser policy controls tab/window and profile routing; this shortcut cannot promise the current profile. Destination rows retain explicit profile dispatch.
+
 ## Preferences and future ports
 
-UserDefaults stores destination order, hidden destination IDs, hover delay, and welcome state. IDs for missing profiles are retained to preserve preferences across temporary unavailability. Login items use `SMAppService`, off by default. Troubleshooting is session-only and off by default. No hovered URL is persisted. Sparkle owns its own update preferences; see [release/update architecture](RELEASING.md).
+UserDefaults stores destination order, hidden destination IDs, hover delay, navigation inclusion, appearance, and welcome state. IDs for missing profiles are retained to preserve preferences across temporary unavailability. Login items use `SMAppService`, off by default. Troubleshooting is session-only and off by default. No hovered URL is persisted by PickBrowser; explicitly copied URLs remain on the system clipboard. Sparkle owns its own update preferences; see [release/update architecture](RELEASING.md).
 
 Future native Windows and Linux adapters should preserve the state machine contracts and reuse fixture scenarios. Their accessibility, compositor, global pointer, and overlay capabilities need separate feasibility work before declaring app coverage. No cross-platform runtime is introduced for the macOS release.

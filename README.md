@@ -32,11 +32,15 @@ Do not use `swift run` for day-to-day usage: permission and login registration s
 
 The menu-bar menu contains Pause/Resume, Settings, and Quit. Settings lets you hide/reorder destinations, set a custom hover delay from 0.1 to 5 seconds (default 0.5), and opt into launch at login or update checks. Move outside both the link and picker for 250 ms to dismiss; the brief grace allows crossing into the picker. Troubleshooting is off by default and can be enabled for the current session. All destinations are initially visible, with a stable order. Profiles temporarily missing from disk retain their saved order and visibility preferences.
 
+The picker appears beside the current pointer, choosing a side that fits the display. Genuine content hyperlinks qualify even when their text is not a URL. Navigation and button-like links are excluded when the application exposes those semantics; **Include navigation links** opts them in. Purely visual styling cannot be classified reliably.
+
+The small Copy icon copies the verified destination and changes to a checkmark. On supported browser webpages only, the tab icon sends the link to that same browser; its external-link settings control the tab and profile. Use a destination row for explicit Chromium profile selection. **Appearance** adjusts the translucent background's opacity and optional color without fading the text; macOS Reduce Transparency is respected.
+
 In Settings, **Check now…** checks GitHub's latest signed release; **Check for updates automatically** enables daily checks. Both the release feed and downloaded archive are verified before installation. You choose when to install; no silent updates. Builds without update signing configured offer a GitHub releases link instead. See [release setup and recovery](docs/RELEASING.md).
 
 ## Browsers
 
-| Destination | v0.1 behavior |
+| Destination | Current behavior |
 | --- | --- |
 | Google Chrome | Existing profiles in the standard Chrome data directory |
 | Microsoft Edge | Existing profiles in the standard Edge data directory |
@@ -47,7 +51,7 @@ Open a newly installed browser once and create a profile before refreshing desti
 
 ## Privacy and permissions
 
-Only Accessibility access is requested. There is no screen capture, OCR, clipboard access, browser extension, account, telemetry, link history, or default-browser registration. URLs exist transiently while detecting, presenting, or opening a link. Destination ordering/visibility, hover delay, welcome state, and update preferences are stored locally. Login registration is opt-in through macOS. Optional update checks contact GitHub; hovered URLs and browser profile data are never included.
+Only Accessibility access is requested. There is no screen capture, OCR, clipboard reading, browser extension, account, telemetry, link history, or default-browser registration. Copy writes the destination to the clipboard only when clicked. URLs otherwise exist transiently while detecting, presenting, or opening a link. Destination ordering/visibility, hover delay, navigation filtering, appearance, welcome state, and update preferences are stored locally. Login registration is opt-in through macOS. Optional update checks contact GitHub; hovered URLs and browser profile data are never included.
 
 The app observes pointer position and dismissal events locally. It does not record keystrokes or consume input intended for other applications. Browser processes receive the chosen URL, as required to open it; their own privacy policies and history behavior still apply. See [privacy details](docs/PRIVACY.md).
 

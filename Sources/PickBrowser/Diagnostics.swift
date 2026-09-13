@@ -49,8 +49,16 @@ enum Diagnostics {
         for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", NSAppearance.Name.darkAqua)] {
             try snapshot(SettingsView(model: model), size: CGSize(width: 480, height: 660),
                          appearance: appearance, to: directory.appendingPathComponent("settings-\(name).png"))
-            try snapshot(PickerView(link: link, destinations: destinations, choose: { _ in }), size: CGSize(width: 300, height: 225),
+            try snapshot(PickerView(link: link, destinations: destinations, quickOpenTitle: "Chrome"), size: CGSize(width: 320, height: 238),
                          appearance: appearance, to: directory.appendingPathComponent("picker-\(name).png"))
+            try snapshot(PickerView(link: link, destinations: destinations), size: CGSize(width: 320, height: 238),
+                         appearance: appearance, to: directory.appendingPathComponent("picker-app-\(name).png"))
+            for (tintName, tint) in [("dark", 0.0), ("light", 1.0)] {
+                let style = PickerAppearance(usesCustomColor: true, red: tint, green: tint, blue: tint, opacity: 0.35)
+                try snapshot(PickerView(link: link, destinations: destinations, appearance: style, quickOpenTitle: "Chrome"),
+                             size: CGSize(width: 320, height: 238), appearance: appearance,
+                             to: directory.appendingPathComponent("picker-\(name)-tint-\(tintName).png"))
+            }
         }
         print("Rendered synthetic-data previews in \(directory.path)")
     }

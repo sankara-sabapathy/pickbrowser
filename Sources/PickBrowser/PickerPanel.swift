@@ -20,13 +20,26 @@ final class PickerPanel: NSPanel {
         setAccessibilityLabel("Choose browser and profile")
     }
 
-    func present(link: LinkCandidate, destinations: [BrowserDestination], choose: @escaping (BrowserDestination) -> Void) {
+    func present(link: LinkCandidate,
+                 destinations: [BrowserDestination],
+                 appearance: PickerAppearance,
+                 quickOpenTitle: String?,
+                 choose: @escaping (BrowserDestination) -> Void,
+                 copy: @escaping () -> Bool,
+                 quickOpen: @escaping () -> Void) {
         let pointer = NSEvent.mouseLocation
         let screen = NSScreen.screens.first(where: { $0.frame.contains(pointer) }) ?? NSScreen.main
         guard let screen else { return }
-        let height = CGFloat(45 + min(destinations.count, 7) * 42 + 12)
-        let frame = PickerPlacement.frame(size: CGSize(width: 300, height: height), link: link.bounds, screen: screen.visibleFrame)
-        contentView = NSHostingView(rootView: PickerView(link: link, destinations: destinations, choose: choose))
+        let height = CGFloat(58 + min(max(destinations.count, 1), 7) * 42 + 12)
+        let frame = PickerPlacement.frame(size: CGSize(width: 320, height: height), cursor: pointer, screen: screen.visibleFrame)
+        guard !frame.isEmpty else { return }
+        contentView = NSHostingView(rootView: PickerView(link: link,
+                                                         destinations: destinations,
+                                                         appearance: appearance,
+                                                         quickOpenTitle: quickOpenTitle,
+                                                         choose: choose,
+                                                         copy: copy,
+                                                         quickOpen: quickOpen))
         setFrame(frame, display: true)
         orderFrontRegardless()
     }

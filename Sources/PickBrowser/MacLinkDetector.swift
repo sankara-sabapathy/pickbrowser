@@ -6,6 +6,8 @@ final class MacLinkDetector: LinkDetector {
     private let queue = DispatchQueue(label: "app.pickbrowser.accessibility", qos: .userInitiated)
     // Accessed on the main thread. Do not accumulate work behind a slow accessibility server.
     private var busy = false
+    /// Main-thread setting captured when a request is dispatched, never read by the AX worker.
+    var includeNavigationLinks = false
     var onDiagnostic: ((String) -> Void)?
 
     func detect(at point: CGPoint, sourceID: String, completion: @escaping (LinkCandidate?) -> Void) {
@@ -16,13 +18,15 @@ final class MacLinkDetector: LinkDetector {
         busy = true
         let pid = app.processIdentifier
         let primaryHeight = NSScreen.screens.first?.frame.maxY ?? 0
+        let includeNavigationLinks = self.includeNavigationLinks
         queue.async {
             let application = AXUIElementCreateApplication(pid)
             AXUIElementSetMessagingTimeout(application, 0.15)
             // Read-only native accessibility handshake. Do not write AXManualAccessibility
             // or AXEnhancedUserInterface: Electron interprets them as screen-reader mode.
             _ = Self.attribute(application, kAXRoleAttribute)
-            let result = Self.hitTest(application: application, point: point, primaryHeight: primaryHeight, sourceID: sourceID)
+            let result = Self.hitTest(application: application, point: point, primaryHeight: primaryHeight,
+                                      sourceID: sourceID, includeNavigationLinks: includeNavigationLinks)
             DispatchQueue.main.async {
                 self.busy = false
                 self.onDiagnostic?("\(app.bundleIdentifier ?? "Application"): \(result.status)")
@@ -36,7 +40,7 @@ final class MacLinkDetector: LinkDetector {
     }
 
     private static func hitTest(application: AXUIElement, point: CGPoint, primaryHeight: CGFloat,
-                                sourceID: String) -> (candidate: LinkCandidate?, status: String) {
+                                sourceID: String, includeNavigationLinks: Bool) -> (candidate: LinkCandidate?, status: String) {
         var hit: AXUIElement?
         // Scope the hit test to the source app instead of rejecting by element PID:
         // embedded web content may legitimately belong to a different renderer process.
@@ -46,7 +50,8 @@ final class MacLinkDetector: LinkDetector {
         }
         let deadline = ProcessInfo.processInfo.systemUptime + 0.75
         let result = AccessibleLinkResolver.resolve(hit: hit, tree: MacLinkTree(primaryHeight: primaryHeight),
-            sourceID: sourceID, point: point, budgetExpired: { ProcessInfo.processInfo.systemUptime >= deadline })
+            sourceID: sourceID, point: point, includeNavigationLinks: includeNavigationLinks,
+            budgetExpired: { ProcessInfo.processInfo.systemUptime >= deadline })
         return (result.candidate, "\(result.outcome.rawValue) [\(result.roles.joined(separator: " → "))]")
     }
 
@@ -76,6 +81,9 @@ private struct MacLinkTree: AccessibleLinkTree {
     let primaryHeight: CGFloat
     func role(of element: AXUIElement) -> String? {
         MacLinkDetector.attribute(element, kAXRoleAttribute) as? String
+    }
+    func subrole(of element: AXUIElement) -> String? {
+        MacLinkDetector.attribute(element, kAXSubroleAttribute) as? String
     }
     func linkURL(of element: AXUIElement) -> URL? {
         for key in [kAXURLAttribute, kAXValueAttribute] {
