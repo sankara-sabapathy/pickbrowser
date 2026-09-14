@@ -19,10 +19,14 @@ jobs:
           bash scripts/test.sh
       - name: Universal application
         run: bash scripts/build-app.sh --universal
-      - name: Archive application
-        run: ditto -c -k --sequesterRsrc --keepParent dist/PickBrowser.app dist/PickBrowser-macOS.zip
+      - name: Package application
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent dist/PickBrowser.app dist/PickBrowser-macOS.zip
+          bash scripts/build-dmg.sh dist/PickBrowser.app dist/PickBrowser.dmg
       - uses: actions/upload-artifact@v4
         with:
           name: PickBrowser-macOS
-          path: dist/PickBrowser-macOS.zip
+          path: |
+            dist/PickBrowser.dmg
+            dist/PickBrowser-macOS.zip
           if-no-files-found: error

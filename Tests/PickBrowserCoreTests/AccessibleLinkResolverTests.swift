@@ -85,7 +85,7 @@ struct AccessibleLinkResolverTests {
     }
 
     @Test func toolbarAndMenuContextsAreOptionalWithoutReadingTheirURL() {
-        for role in ["AXButton", "AXMenu", "AXMenuBar", "AXMenuItem", "AXToolbar", "AXTab", "AXTabGroup"] {
+        for role in ["AXButton", "AXMenu", "AXMenuBar", "AXMenuItem", "AXToolbar", "AXTab"] {
             let tree = FakeTree(nodes: [
                 0: Node(role: "AXLink", url: url, bounds: bounds, parent: 1),
                 1: Node(role: role, url: URL(string: "https://example.com/not-the-link"), parent: 2),
@@ -143,14 +143,14 @@ struct AccessibleLinkResolverTests {
         ])
         let cyclicResult = AccessibleLinkResolver.resolve(hit: 0, tree: cycle, sourceID: "app:1", point: point)
         #expect(cyclicResult.candidate == nil)
-        #expect(cyclicResult.outcome == .filteredControl)
+        #expect(cyclicResult.outcome == .incompleteContext)
         let missingRole = FakeTree(nodes: [
             0: Node(role: "AXLink", url: url, bounds: bounds, parent: 1),
             1: Node(role: nil)
         ])
         let missingRoleResult = AccessibleLinkResolver.resolve(hit: 0, tree: missingRole, sourceID: "app:1", point: point)
         #expect(missingRoleResult.candidate == nil)
-        #expect(missingRoleResult.outcome == .filteredControl)
+        #expect(missingRoleResult.outcome == .incompleteContext)
     }
 
     @Test func ancestorBudgetIsBounded() {
@@ -164,6 +164,44 @@ struct AccessibleLinkResolverTests {
         let tree = FakeTree(nodes: [0: Node(role: "AXPrivate https://personal.example")])
         let result = AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "app:1", point: point)
         #expect(result.roles == ["AXUnknown"])
+    }
+
+    @Test func deeplyNestedMessageLinkHasSeparateContextBudget() {
+        var nodes = Dictionary(uniqueKeysWithValues: (1..<24).map { ($0, Node(role: "AXGroup", parent: $0 + 1)) })
+        nodes[0] = Node(role: "AXLink", url: url, bounds: bounds, parent: 1)
+        nodes[24] = Node(role: "AXWebArea")
+        let tree = FakeTree(nodes: nodes)
+        let result = AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "chat:1", point: point)
+        #expect(result.candidate?.url == url)
+        #expect(result.candidate?.isWebContent == true)
+        #expect(result.roles.count == 25)
+        #expect(tree.urlReads == [0])
+        nodes[20] = Node(role: "AXGroup", subrole: "AXLandmarkNavigation", parent: 21)
+        #expect(AccessibleLinkResolver.resolve(hit: 0, tree: FakeTree(nodes: nodes), sourceID: "chat:1", point: point).outcome == .filteredControl)
+    }
+
+    @Test func contextSearchStillHasHardLimitAndDeadline() {
+        var nodes = Dictionary(uniqueKeysWithValues: (1..<40).map { ($0, Node(role: "AXGroup", parent: $0 + 1)) })
+        nodes[0] = Node(role: "AXLink", url: url, bounds: bounds, parent: 1)
+        let tree = FakeTree(nodes: nodes)
+        let result = AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "chat:1", point: point)
+        #expect(result.candidate == nil)
+        #expect(result.outcome == .incompleteContext)
+        #expect(result.roles.count == 32)
+        var checks = 0
+        let timed = AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "chat:1", point: point,
+            budgetExpired: { checks += 1; return checks > 15 })
+        #expect(timed.candidate == nil)
+        #expect(timed.outcome == .timedOut)
+    }
+
+    @Test func tabbedContentContainerDoesNotExcludeMessageLinks() {
+        let tree = FakeTree(nodes: [
+            0: Node(role: "AXLink", url: url, bounds: bounds, parent: 1),
+            1: Node(role: "AXTabGroup", parent: 2),
+            2: Node(role: "AXWindow")
+        ])
+        #expect(AccessibleLinkResolver.resolve(hit: 0, tree: tree, sourceID: "chat:1", point: point).candidate?.url == url)
     }
 
     private struct Node {

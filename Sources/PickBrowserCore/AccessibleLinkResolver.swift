@@ -26,6 +26,7 @@ public struct LinkResolution {
         case filteredControl = "Link is in excluded control or navigation context"
         case timedOut = "Source application timed out"
         case searchLimit = "No link within the bounded ancestor search"
+        case incompleteContext = "Link found, but enclosing context could not be verified"
     }
     public let candidate: LinkCandidate?
     public let outcome: Outcome
@@ -47,17 +48,18 @@ public enum AccessibleLinkResolver {
         func result(_ outcome: LinkResolution.Outcome, _ candidate: LinkCandidate? = nil) -> LinkResolution {
             LinkResolution(candidate: candidate, outcome: outcome, roles: roles)
         }
-        // Twelve elements keep this passive AX walk bounded while accommodating the
-        // nested groups commonly inserted by Chromium and Slack before an AXLink.
-        // A candidate is withheld when its enclosing context cannot be checked in time.
-        for _ in 0..<12 {
+        // Finding the link and validating its enclosing context have separate bounds.
+        // Chat/web apps can put many layout groups ABOVE a genuine message link.
+        // Keep the original hit-to-link limit and the adapter's wall-clock deadline.
+        for depth in 0..<32 {
             guard !budgetExpired() else { return result(.timedOut) }
+            if depth >= 12 && destination == nil { return result(.searchLimit) }
             guard !visited.contains(element) else {
-                return result(destination == nil ? .noLink : .filteredControl)
+                return result(destination == nil ? .noLink : .incompleteContext)
             }
             visited.append(element)
             guard let rawRole = tree.role(of: element) else {
-                return result(destination == nil ? .noLink : .filteredControl)
+                return result(destination == nil ? .noLink : .incompleteContext)
             }
             let role = rawRole
             // Diagnostic roles contain no arbitrary app-provided text.
@@ -90,7 +92,7 @@ public enum AccessibleLinkResolver {
             }
             element = parent
         }
-        return result(.searchLimit)
+        return result(destination == nil ? .searchLimit : .incompleteContext)
     }
 
     private static func resolved(
@@ -111,7 +113,9 @@ public enum AccessibleLinkResolver {
         // AXLandmarkNavigation is the public macOS Web accessibility subrole.
         // Chromium commonly exposes it on an AXGroup rather than as a distinct role.
         subrole == "AXLandmarkNavigation" || [
-            "AXButton", "AXMenu", "AXMenuBar", "AXMenuItem", "AXToolbar", "AXTab", "AXTabGroup"
+            // AXTabGroup is a tab VIEW, which can contain the actual document.
+            // Only exclude the controls/landmarks, not the whole content container.
+            "AXButton", "AXMenu", "AXMenuBar", "AXMenuItem", "AXToolbar", "AXTab"
         ].contains(role)
     }
 }

@@ -28,6 +28,15 @@ struct ProfileTests {
         }
     }
 
+    @Test func verifiedLinkValuesCanNormalizeMissingHTTPS() {
+        #expect(WebURL.fromExplicitLinkValue("conduktor.io/blog/kafka")?.absoluteString == "https://conduktor.io/blog/kafka")
+        #expect(WebURL.fromExplicitLinkValue("localhost:3000/docs")?.absoluteString == "https://localhost:3000/docs")
+        #expect(WebURL.fromExplicitLinkValue("https://example.com/docs")?.absoluteString == "https://example.com/docs")
+        for value in ["Home", "Learn more", "/relative", "//example.com", "javascript:alert(1)", "example.com@evil.test"] {
+            #expect(WebURL.fromExplicitLinkValue(value) == nil, "\(value)")
+        }
+    }
+
     @Test func orderPreservesMissingDestinationsAndAppendsNewOnes() {
         #expect(DestinationOrder.reconcile(saved: ["brave", "chrome", "brave"], discovered: ["chrome", "safari"]) ==
                 ["brave", "chrome", "safari"])

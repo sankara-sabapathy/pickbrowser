@@ -29,6 +29,12 @@ final class MacLinkDetector: LinkDetector {
                                       sourceID: sourceID, includeNavigationLinks: includeNavigationLinks)
             DispatchQueue.main.async {
                 self.busy = false
+                guard AXIsProcessTrusted(),
+                      NSWorkspace.shared.frontmostApplication.map(Self.sourceID) == sourceID,
+                      hypot(NSEvent.mouseLocation.x - point.x, NSEvent.mouseLocation.y - point.y) <= 6 else {
+                    completion(nil)
+                    return
+                }
                 self.onDiagnostic?("\(app.bundleIdentifier ?? "Application"): \(result.status)")
                 completion(result.candidate)
             }
@@ -89,7 +95,7 @@ private struct MacLinkTree: AccessibleLinkTree {
         for key in [kAXURLAttribute, kAXValueAttribute] {
             let raw = MacLinkDetector.attribute(element, key)
             if let string = (raw as? URL)?.absoluteString ?? (raw as? String),
-               let url = WebURL.validated(string) { return url }
+               let url = WebURL.fromExplicitLinkValue(string) { return url }
         }
         return nil
     }

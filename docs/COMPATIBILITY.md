@@ -2,6 +2,17 @@
 
 This initial implementation is **not yet certified against real source applications**. Installation or compilation is not a passing hover test. Record the macOS, source-app, and destination-browser versions for every run. Use a packaged `.app` with Accessibility access enabled.
 
+## v0.3 distribution and detection verification — 2026-09-14
+
+- The release produces a DMG for first-time installation while retaining the ZIP as Sparkle's signed update enclosure.
+- The finished DMG must mount read-only with `PickBrowser.app`, an `/Applications` shortcut, and a saved Finder icon layout positioning PickBrowser before Applications.
+- Packaged apps outside system or user Applications display installation guidance before permission or updater startup. Pure location tests cover DMG, Downloads, App Translocation, similarly named folders, both supported Applications roots, and command-line development builds.
+- Manual acceptance still requires downloading the public DMG, dragging to Applications, ejecting, launching, granting Accessibility, and confirming a later Sparkle ZIP update preserves the installed location and permission.
+- The user reports browser hover working but Slack and Teams failing in v0.2.3. The supplied Teams trace was `AXMenuBar → AXApplication`, not message content; it does not identify the message-link failure. Troubleshooting now retains eight recent status/role checks so returning via the menu bar does not immediately replace the relevant check.
+- Regression fixtures cover verified links nested beyond twelve context elements, tabbed content containers, deeply nested navigation rejection, timeouts, and hard search bounds. These fix demonstrated resolver failures, not yet a verified cure for the reported Slack/Teams sessions.
+- Live read-only inspection confirmed that current Teams can expose a message destination as `AXLink` with a scheme-less domain/path value. v0.3 normalizes that explicit destination to HTTPS while continuing to reject labels, relative paths, non-web schemes, buttons, and navigation controls. Pointer-level hover still needs user retesting after installation.
+- Ad-hoc releases have build-specific code identities. An Applications install prevents temporary-path issues but cannot promise permission retention across updates; Developer ID signing and real upgrade acceptance remain required.
+
 ## v0.2.1 verification — 2026-09-13
 
 - 49 Swift tests pass, including cursor-adjacent placement across display edges, conservative navigation filtering, webpage-only shortcut eligibility, appearance validation, and stale-request rejection when changing dwell.
@@ -32,7 +43,8 @@ This initial implementation is **not yet certified against real source applicati
 | Source | Intended coverage | Current validation |
 | --- | --- | --- |
 | Apple Mail | Rendered HTTP/HTTPS links exposed as AXLink | Pending manual validation |
-| Slack desktop | Message links exposed as AXLink | Pending manual validation |
+| Slack desktop | Message links exposed as AXLink | User reports failure in v0.2.3; v0.3 retest pending |
+| Microsoft Teams desktop | Message links exposed as AXLink | User reports failure in v0.2.3; v0.3 retest pending |
 | Chrome webpages | Anchors exposed as AXLink, including nested text | Pending manual validation |
 | Edge webpages | Anchors exposed as AXLink | Pending manual validation |
 | Brave webpages | Anchors exposed as AXLink | Pending manual validation |
@@ -45,7 +57,7 @@ Canvas-rendered content, custom controls, links only exposed in attributed text,
 
 Use the running app's Settings permission status as the source of truth. A terminal-launched `--diagnose` process may be evaluated under the terminal/agent's privacy context and is not proof that the GUI app lacks permission.
 
-Turn on Settings → Enable troubleshooting, try a link, then return to Settings. It shows the last check (hit-test error, role chain, missing URL/bounds, or picker displayed) and the running bundle path. It contains no link text or URL. It is off by default; disable it to clear the status, or relaunch to reset it. Ensure only one PickBrowser copy is running; v0.1.1 enforces this at startup. Rebuilt ad-hoc bundles may need their Accessibility entry refreshed by the user.
+Turn on Settings → Enable troubleshooting, try a message link, then return to Settings. Expand **Recent checks** to see up to eight checks (hit-test error, role chain, missing URL/bounds, or picker displayed), in chronological order. A final `AXMenuBar → AXApplication` means the pointer was checked over the menu bar; inspect the preceding message check instead. It contains no link text or URL and is never persisted. Disable troubleshooting or relaunch to clear it. Ensure only one PickBrowser copy is running; v0.1.1 enforces this at startup. Rebuilt ad-hoc bundles may need their Accessibility entry refreshed by the user.
 
 The initial v0.1.0 build was reported not working in Slack, Teams, and browser pages despite GUI permission being enabled. Version 0.1.1 addressed missing accessibility activation and renderer-PID rejection. Its runtime trace recorded an AXLink detected and picker presented in Slack, but also triggered screen-reader prompts in editors. Version 0.1.2 removes forced accessibility-mode activation; Slack and other source apps need retesting in a fresh session. Teams remains best-effort, not a certified source.
 
@@ -59,6 +71,8 @@ Test Safari with its normal settings and confirm it receives the URL; its extern
 
 ## Interaction checklist
 
+- Open the public DMG and confirm Finder shows PickBrowser on the left and Applications on the right. Drag to Applications, eject, and launch the copied app from Spotlight.
+- Before copying, double-click the app inside the DMG: it shows “Drag PickBrowser to Applications before opening” and does not request Accessibility permission. Verify the same behavior from Downloads and an App Translocation launch.
 - Hover near the beginning, middle, and end of a long link: the picker stays beside the pointer, not the start of the link. Repeat near all display edges and with negative-origin displays.
 - Named content links still qualify. Semantically marked navigation, menus, toolbars, and button-like links are excluded by default; opt in and confirm only genuine hyperlinks qualify. Plain buttons with URL metadata must remain excluded.
 - Copy a link: one explicit clipboard write, visible checkmark, no browser launch. Move away: normal dismissal. Confirm no clipboard reads during detection.

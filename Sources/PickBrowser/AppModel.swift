@@ -6,16 +6,21 @@ import PickBrowserCore
 
 final class AppModel: ObservableObject {
     @Published var trusted = AXIsProcessTrusted()
+    @Published private(set) var permissionPreviouslyGranted: Bool
     @Published var paused = false
     @Published private(set) var hoverDelay: TimeInterval
     @Published private(set) var includeNavigationLinks: Bool
     @Published private(set) var pickerAppearance: PickerAppearance
     @Published var troubleshootingEnabled = false {
         didSet {
-            if !troubleshootingEnabled { detectionStatus = "Troubleshooting is off." }
+            if !troubleshootingEnabled {
+                detectionStatus = "Troubleshooting is off."
+                detectionDiagnostics.clear()
+            }
         }
     }
     @Published var detectionStatus = "Hover over a link in another app, then return here to see the latest check."
+    @Published var detectionDiagnostics = DetectionDiagnostics()
     @Published private(set) var destinations: [BrowserDestination] = []
     @Published private(set) var hiddenIDs: Set<String>
     @Published private(set) var order: [String]
@@ -27,6 +32,9 @@ final class AppModel: ObservableObject {
 
     init(defaults: UserDefaults = .standard, destinations: [BrowserDestination] = []) {
         self.defaults = defaults
+        let trustedNow = AXIsProcessTrusted()
+        permissionPreviouslyGranted = defaults.bool(forKey: "hadAccessibilityAccess") || trustedNow
+        if trustedNow { defaults.set(true, forKey: "hadAccessibilityAccess") }
         hoverDelay = HoverTiming.validated(defaults.object(forKey: "hoverDelay") as? Double ?? HoverTiming.defaultDelay)
         includeNavigationLinks = defaults.bool(forKey: "includeNavigationLinks")
         if let data = defaults.data(forKey: "pickerAppearance"),
@@ -113,9 +121,18 @@ final class AppModel: ObservableObject {
     func requestAccessibility() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         trusted = AXIsProcessTrustedWithOptions(options)
+        if trusted {
+            permissionPreviouslyGranted = true
+            defaults.set(true, forKey: "hadAccessibilityAccess")
+        }
         if !trusted, let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    func recordAccessibilityGranted() {
+        permissionPreviouslyGranted = true
+        defaults.set(true, forKey: "hadAccessibilityAccess")
     }
 
     func setLoginEnabled(_ enabled: Bool) {

@@ -10,11 +10,11 @@ Every push/merge to `master` runs Release: tests, universal build, signature ver
 
 Branch pushes and pull requests run the macOS CI build without signing secrets. Pages deploys `site/` automatically on master changes and can also be dispatched manually. Repository Settings → Pages must use **GitHub Actions** as its source. Use the Release and GitHub Pages workflow statuses to confirm publication; a green local build does not prove either deployment.
 
-Assets are `PickBrowser-macOS.zip` (one universal `.app`), `appcast.xml`, and `SHA256SUMS.txt`. The landing page reads GitHub's latest stable release; if the API is unavailable, its download link falls back to the GitHub release page. Windows and Linux binaries are not produced.
+Assets are `PickBrowser.dmg` for first-time installation, `PickBrowser-macOS.zip` for Sparkle updates, `appcast.xml`, and `SHA256SUMS.txt`. Both packages contain the same universal `.app`. The DMG presents PickBrowser on the left and an Applications shortcut on the right. The landing page selects the DMG from GitHub's latest stable release; if the API is unavailable, its download link falls back to the release page. Windows and Linux binaries are not produced.
 
 ## Update signing — required
 
-Sparkle 2.9.6 is pinned in `Package.swift` and `Package.resolved`. The framework's license is embedded in the application. Both the feed and the zip are Ed25519 signed. Downloads are verified before extraction. Feed-signature verification has no time-based fallback. The feed is served by GitHub's `/releases/latest/download/appcast.xml`; its archive URL pins the exact release tag, avoiding latest-feed/latest-archive races.
+Sparkle 2.9.6 is pinned in `Package.swift` and `Package.resolved`. The framework's license is embedded in the application. Both the feed and the ZIP are Ed25519 signed. Downloads are verified before extraction. Feed-signature verification has no time-based fallback. The feed is generated before the DMG is added to the release directory, so the ZIP remains Sparkle's sole update enclosure. It is served by GitHub's `/releases/latest/download/appcast.xml`; its archive URL pins the exact release tag, avoiding latest-feed/latest-archive races.
 
 The signing public key is tracked in `Resources/UpdatePublicKey.txt`. The private key belongs only in the maintainer's Keychain and GitHub Actions secret `SPARKLE_PRIVATE_KEY`. Never commit or print it. Initial setup, after `swift package resolve`:
 
@@ -50,7 +50,19 @@ Add these repository Actions secrets:
 
 Set repository variable `REQUIRE_NOTARIZATION=true` before a production launch. This makes missing Apple credentials a hard failure; partial credential configurations already fail. The workflow imports the certificate into a temporary keychain, signs all nested Sparkle code inside-out with hardened runtime and timestamping, notarizes, staples, checks Gatekeeper assessment, and only then packages/signs the download. Its temporary keychain is removed even on failure. No release is published if signing, notarization, verification, or tests fail.
 
+An installed path and bundle identifier alone do not preserve Accessibility consent for ad-hoc builds: their designated requirement is tied to the particular binary. Use a consistent Developer ID identity for successive releases; never weaken the designated requirement or modify the user's TCC database to avoid consent. See [Apple TN3127](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).
+
 The Apple credential path cannot be validated without real release credentials. Before calling a release production-ready, complete [manual acceptance](COMPATIBILITY.md), including a clean downloaded install and an older-to-newer in-app update. Test Apple silicon and Intel, macOS 14 and a current macOS, with Accessibility/login preferences preserved.
+
+## DMG packaging
+
+`scripts/build-dmg.sh` copies the already-signed app into a version-named read/write image, adds an `/Applications` shortcut and installation artwork, writes a Finder icon-view layout, then converts it to a compressed read-only DMG. Versioned volume names prevent Finder from reusing an older installer's cached view. The shared verifier mounts the finished image read-only and checks the app, shortcut, actual saved icon coordinates, window bounds, background, expected version, disk integrity, and nested app signatures. Builds use hash-pinned `ds-store` and `mac-alias` libraries in a project-local Python environment; no Finder automation, Accessibility permission, or interactive desktop is required. With a Developer ID identity, the DMG is signed, submitted to Apple's notary service, stapled, and Gatekeeper-assessed after the already-notarized app is packaged. The standalone verifier is `scripts/verify-dmg.sh`.
+
+Run the same packaging check locally after building the app:
+
+```sh
+bash scripts/build-dmg.sh dist/PickBrowser.app dist/release/PickBrowser.dmg
+```
 
 ## Recovery
 

@@ -2,6 +2,8 @@
 
 PickBrowser is a Swift Package Manager executable, packaged as an unsandboxed macOS application. macOS Accessibility requires user consent; no entitlements for screen recording or Apple Events are used. The app is a menu-bar accessory (`LSUIElement`) with a stable identifier `app.pickbrowser.PickBrowser`.
 
+Packaged builds start only from `/Applications` or the current user's `Applications` directory. A launch from a DMG, Downloads, or App Translocation displays installation guidance before the app delegate is created, so temporary copies never request Accessibility permission or initialize the updater. SwiftPM command-line development builds remain runnable.
+
 ## Responsibilities
 
 | Component | Contract |
@@ -15,7 +17,7 @@ PickBrowser is a Swift Package Manager executable, packaged as an unsandboxed ma
 
 ## Hover and detection
 
-The host samples the pointer at 20 Hz. After the configured delay (default 500 ms, range 100–5000 ms) within a four-point radius, it hit-tests Accessibility on a serial worker. A delay change resets the coordinator without resetting its request generation, invalidating pending work without reusing request IDs. At most one AX lookup runs at once. Lookup reads have short timeouts, at most twelve elements are examined, and a total elapsed-time budget stops traversal. These limits keep a slow app from blocking the main thread or growing a worker backlog.
+The host samples the pointer at 20 Hz. After the configured delay (default 500 ms, range 100–5000 ms) within a four-point radius, it hit-tests Accessibility on a serial worker. A delay change resets the coordinator without resetting its request generation, invalidating pending work without reusing request IDs. At most one AX lookup runs at once. The link must be found within twelve elements; enclosing-context inspection can continue up to thirty-two total elements, within the same elapsed-time budget and short per-read timeouts. These limits keep a slow app from blocking the main thread or growing a worker backlog.
 
 Before hit-testing, read the source application's role to activate native accessibility in Chromium. Never write `AXManualAccessibility` or `AXEnhancedUserInterface`: Electron maps these to full screen-reader mode, which triggers editor prompts and can change application behavior. Do not switch VoiceOver, change editor settings, or turn off another assistive client's support. Apps that require forced screen-reader mode to expose their links remain unsupported. Read-only accessibility queries can still cause some applications to infer assistive-technology use; PickBrowser cannot control those heuristics.
 
@@ -23,9 +25,9 @@ The hit test is scoped to the foreground application's AX object. Do not reject 
 
 References: [Chromium application-role activation](https://github.com/chromium/chromium/blob/main/chrome/browser/chrome_browser_application_mac.mm), [Electron's manual accessibility API](https://www.electronjs.org/docs/latest/tutorial/accessibility).
 
-Only an `AXLink` with an explicit URL attribute (or a URL-valued value attribute on that same link) qualifies. Generic text, the containing document's URL, custom schemes, and missing/empty geometry are rejected. No entire accessibility tree is scraped. The AX Y axis is converted once against the primary display into AppKit global coordinates; negative and vertically stacked display coordinates remain valid.
+Only an `AXLink` with an explicit URL attribute (or a destination-valued value attribute on that same link) qualifies. Absolute HTTP/HTTPS destinations are accepted; a scheme-less domain/path explicitly exposed by an `AXLink` is normalized to HTTPS. Scheme-less labels, relative paths, generic text, the containing document's URL, custom schemes, and missing/empty geometry are rejected. No entire accessibility tree is scraped. The AX Y axis is converted once against the primary display into AppKit global coordinates; negative and vertically stacked display coordinates remain valid.
 
-Bounded ancestor inspection continues above the nearest link to exclude button, menu, toolbar, tab, and navigation-landmark contexts by default. The navigation setting permits those contexts but never converts a plain button URL into hyperlink evidence. Visible link wording is not a filter. CSS-only appearance cannot reliably establish navigation intent. Encountering an `AXWebArea` records webpage provenance for the source-browser shortcut. Incomplete or timed-out inspection is rejected conservatively.
+Bounded ancestor inspection continues above the nearest link to exclude button, menu, toolbar, tab controls, and navigation-landmark contexts by default. `AXTabGroup` is a content container, not sufficient evidence of navigation. The navigation setting permits excluded contexts but never converts a plain button URL into hyperlink evidence. Visible link wording is not a filter. CSS-only appearance cannot reliably establish navigation intent. Encountering an `AXWebArea` records webpage provenance for the source-browser shortcut. Incomplete or timed-out inspection is rejected conservatively.
 
 Request generation and source identity include the source PID. Moving the pointer, switching applications, revoking permission, pausing, clicking, or scrolling invalidates outstanding work. Callbacks recheck the current state before showing UI. Unsupported elements produce no UI and can be retried after another dwell interval.
 

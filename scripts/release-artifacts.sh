@@ -4,8 +4,10 @@ cd "$(dirname "$0")/.."
 : "${PICKBROWSER_VERSION:?Release version is required}"
 : "${GITHUB_REPOSITORY:?Repository is required}"
 APP="dist/PickBrowser.app"
-OUTPUT="dist/release"
-mkdir -p "$OUTPUT"
+mkdir -p dist
+# Generate the feed in an isolated directory: stale DMGs, apps, or older ZIPs
+# from local builds must never become Sparkle's update enclosure.
+OUTPUT="$(mktemp -d dist/.release-staging.XXXXXX)"
 if [ "${PICKBROWSER_SIGNING_IDENTITY:--}" != "-" ]; then
   : "${APPLE_ID:?}" "${APPLE_APP_PASSWORD:?}" "${APPLE_TEAM_ID:?}"
   ditto -c -k --sequesterRsrc --keepParent "$APP" dist/notarization.zip
@@ -31,4 +33,25 @@ printf '%s' "${SPARKLE_PRIVATE_KEY:-}" | "$TOOLS/generate_appcast" "${SIGNING_AR
 test -s "$OUTPUT/appcast.xml"
 printf '%s' "${SPARKLE_PRIVATE_KEY:-}" | "$TOOLS/sign_update" "${SIGNING_ARGS[@]}" --verify "$OUTPUT/appcast.xml"
 python3 scripts/verify-appcast.py "$OUTPUT/appcast.xml" "$OUTPUT/PickBrowser-macOS.zip" "$PICKBROWSER_VERSION" "$GITHUB_REPOSITORY"
-(cd "$OUTPUT" && shasum -a 256 PickBrowser-macOS.zip appcast.xml > SHA256SUMS.txt)
+# Create the installer only after generating the appcast so Sparkle sees the ZIP
+# as its sole update payload. The DMG is for first-time installation.
+bash scripts/build-dmg.sh "$APP" "$OUTPUT/PickBrowser.dmg"
+if [ "${PICKBROWSER_SIGNING_IDENTITY:--}" != "-" ]; then
+  xcrun notarytool submit "$OUTPUT/PickBrowser.dmg" --apple-id "$APPLE_ID" \
+    --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait --timeout 20m
+  xcrun stapler staple "$OUTPUT/PickBrowser.dmg"
+  xcrun stapler validate "$OUTPUT/PickBrowser.dmg"
+  spctl --assess --type open --context context:primary-signature --verbose=2 "$OUTPUT/PickBrowser.dmg"
+fi
+(cd "$OUTPUT" && shasum -a 256 PickBrowser.dmg PickBrowser-macOS.zip appcast.xml > SHA256SUMS.txt)
+mkdir -p dist/release
+BACKUP=""
+for ASSET in PickBrowser.dmg PickBrowser-macOS.zip appcast.xml SHA256SUMS.txt; do
+  if [ -e "dist/release/$ASSET" ]; then
+    if [ -z "$BACKUP" ]; then BACKUP="$(mktemp -d dist/.previous-release.XXXXXX)"; fi
+    mv "dist/release/$ASSET" "$BACKUP/$ASSET"
+  fi
+  mv "$OUTPUT/$ASSET" "dist/release/$ASSET"
+done
+rmdir "$OUTPUT"
+printf 'Verified release assets are ready in dist/release\n'

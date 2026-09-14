@@ -10,11 +10,11 @@ fetch(`https://api.github.com/repos/${repository}/releases/latest`, {
   return response.json();
 }).then(release => {
   if (release.draft || release.prerelease || !/^v\d+\.\d+\.\d+$/.test(release.tag_name)) return;
-  const asset = release.assets?.find(asset => asset.name === "PickBrowser-macOS.zip");
-  const expected = `https://github.com/${repository}/releases/download/${release.tag_name}/PickBrowser-macOS.zip`;
+  const asset = release.assets?.find(asset => asset.name === "PickBrowser.dmg");
+  const expected = `https://github.com/${repository}/releases/download/${release.tag_name}/PickBrowser.dmg`;
   if (!asset || asset.browser_download_url !== expected) return;
   document.getElementById("download").href = expected;
-  document.getElementById("release-status").textContent = `${release.tag_name} · ${Math.ceil(asset.size / 1048576)} MB universal download`;
+  document.getElementById("release-status").textContent = `${release.tag_name} · ${Math.ceil(asset.size / 1048576)} MB universal DMG`;
   if (release.body?.includes("This build is Developer ID signed and notarized by Apple.")) {
     document.getElementById("distribution-note").textContent = "Developer ID signed and notarized by Apple. Move PickBrowser to Applications before opening it.";
   }

@@ -19,12 +19,15 @@ Requires macOS 14 or later and Xcode Command Line Tools with Swift 6.0 or newer 
 ```sh
 bash scripts/test.sh
 bash scripts/build-app.sh --universal
-open dist/PickBrowser.app
+bash scripts/build-dmg.sh
+open dist/release/PickBrowser.dmg
 ```
 
-The test script supplies framework paths when using standalone Command Line Tools; with full Xcode it runs standard Swift Testing. Use `--native` for a faster build for your current Mac. The universal bundle includes Apple silicon and Intel binaries. For regular use, copy `dist/PickBrowser.app` into `/Applications` or `~/Applications` before enabling permissions or launch at login. Quit the old copy before replacing it.
+The test script supplies framework paths when using standalone Command Line Tools; with full Xcode it runs standard Swift Testing. Use `--native` for a faster build for your current Mac. The universal bundle includes Apple silicon and Intel binaries.
 
-On first launch, click **Enable Accessibility** and enable PickBrowser under **System Settings → Privacy & Security → Accessibility**. Return to the app; detection starts automatically. If a locally rebuilt app loses permission, remove its old Accessibility entry and grant access to the new bundle. Development builds are ad-hoc signed; a stable Developer ID signature is needed for reliable public distribution.
+For a first-time install, download **PickBrowser.dmg**, open it, drag **PickBrowser** onto the **Applications** shortcut, eject the disk image, and launch PickBrowser from Applications. The release ZIP is the signed Sparkle update payload rather than the installer. If PickBrowser is launched from the DMG, Downloads, or an App Translocation path, it asks you to move it to Applications before requesting Accessibility access.
+
+On first installed launch, click **Enable Accessibility** and enable PickBrowser under **System Settings → Privacy & Security → Accessibility**. Return to the app; detection starts automatically. Keeping the app in Applications gives macOS a stable path for Accessibility permission and updates. If a locally rebuilt app loses permission, remove its old Accessibility entry and grant access to the new bundle. Development builds are ad-hoc signed; a stable Developer ID signature is needed for reliable public distribution.
 
 Do not use `swift run` for day-to-day usage: permission and login registration should belong to the packaged `.app`, with a stable location and bundle identifier.
 

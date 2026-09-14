@@ -2,7 +2,9 @@
 
 PickBrowser detects and opens links locally. There are no accounts, analytics, crash-upload service, or link history. Hover detection does not make application network requests. Optional update checking is the only app-managed network feature.
 
-With Accessibility permission, it inspects the element beneath the pointer after dwell and up to eleven parents to identify a hyperlink and its control context. It reads the source application's accessibility role but never writes its accessibility-mode attributes, enables VoiceOver, changes editor settings, or disables another assistive client's access. Candidate URLs are held temporarily in memory for presentation and launching. It does not read entire accessibility trees, take screenshots, perform OCR, read the clipboard, or query browser history/cookies.
+With Accessibility permission, it inspects the element beneath the pointer after dwell and up to eleven parents to identify a hyperlink. Once a link is found, bounded control-context inspection may continue up to thirty-two total elements within a short time budget. It reads the source application's accessibility role but never writes its accessibility-mode attributes, enables VoiceOver, changes editor settings, or disables another assistive client's access. Candidate URLs are held temporarily in memory for presentation and launching. It does not read entire accessibility trees, take screenshots, perform OCR, read the clipboard, or query browser history/cookies.
+
+Optional troubleshooting keeps up to eight recent status/role checks in memory, not link URLs or message text. Turning it off or quitting clears them. No diagnostic history is written to disk during normal use.
 
 Clicking Copy explicitly replaces the system clipboard with the verified URL. PickBrowser does not read previous clipboard contents or maintain clipboard history. Copied URLs can remain on the clipboard after the picker closes and may be accessible to other software or system clipboard-sync features.
 

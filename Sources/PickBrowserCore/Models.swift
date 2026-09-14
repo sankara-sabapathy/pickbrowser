@@ -25,6 +25,21 @@ public enum WebURL {
               !value.contains(where: { $0.isNewline || $0.asciiValue == 0 }) else { return nil }
         return url
     }
+
+    /// Some web-based desktop apps expose a verified AXLink destination without
+    /// its scheme. Call this only for values read from an actual link element.
+    public static func fromExplicitLinkValue(_ value: String) -> URL? {
+        if let absolute = validated(value) { return absolute }
+        guard !value.isEmpty,
+              !value.contains(where: { $0.isWhitespace || $0.asciiValue == 0 }),
+              !value.contains("://"), !value.hasPrefix("//"),
+              let components = URLComponents(string: "https://" + value),
+              components.user == nil, components.password == nil,
+              let host = components.host?.lowercased(),
+              host == "localhost" || host.contains(".") || (host.hasPrefix("[") && host.hasSuffix("]")),
+              let normalized = components.url else { return nil }
+        return validated(normalized.absoluteString)
+    }
 }
 
 public struct BrowserDestination: Identifiable, Equatable {

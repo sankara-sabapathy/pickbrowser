@@ -6,7 +6,7 @@ MASTER_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq .objec
 if [ "$MASTER_SHA" != "$GITHUB_SHA" ]; then
   printf 'A newer commit is on master; its workflow will publish the next release.\n'; exit 0
 fi
-NOTES="Universal macOS 14+ app (Apple silicon and Intel). Updates and the update feed are cryptographically signed. Automatic update checking is optional and off by default. Download PickBrowser-macOS.zip, extract it, and move PickBrowser.app to Applications before opening."
+NOTES="Universal macOS 14+ app (Apple silicon and Intel). This release improves Slack and Teams detection for deeply nested and scheme-less explicit links, and retains several temporary troubleshooting checks. For first-time installation, download PickBrowser.dmg, open it, and drag PickBrowser onto Applications before launching. PickBrowser-macOS.zip is reserved for signed Sparkle updates. Automatic update checking is optional and off by default."
 if [ "${PICKBROWSER_SIGNING_IDENTITY:--}" = "-" ]; then
   NOTES="$NOTES
 
@@ -23,5 +23,5 @@ if ! gh release view "$TAG" >/dev/null 2>&1; then
 fi
 IS_DRAFT="$(gh release view "$TAG" --json isDraft --jq .isDraft)"
 if [ "$IS_DRAFT" != "true" ]; then printf 'Release is already published; leaving it unchanged.\n'; exit 0; fi
-gh release upload "$TAG" dist/release/PickBrowser-macOS.zip dist/release/appcast.xml dist/release/SHA256SUMS.txt --clobber
+gh release upload "$TAG" dist/release/PickBrowser.dmg dist/release/PickBrowser-macOS.zip dist/release/appcast.xml dist/release/SHA256SUMS.txt --clobber
 gh release edit "$TAG" --draft=false --latest

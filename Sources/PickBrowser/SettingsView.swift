@@ -29,6 +29,10 @@ struct SettingsView: View {
                 if !model.trusted {
                     Button("Enable Accessibility", action: model.requestAccessibility)
                         .buttonStyle(.borderedProminent)
+                    if model.permissionPreviouslyGranted {
+                        Text("Access was enabled before. macOS no longer recognizes this updated copy. In Accessibility settings, remove the old PickBrowser entry and add the current copy from Applications, then quit and reopen PickBrowser. This app cannot grant itself access.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Text("Enable PickBrowser in System Settings, then return here. Detection starts automatically.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -139,6 +143,11 @@ struct SettingsView: View {
             if model.troubleshootingEnabled {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(model.detectionStatus).textSelection(.enabled)
+                    DisclosureGroup("Recent checks (temporary, no URLs)") {
+                        ForEach(Array(model.detectionDiagnostics.entries.enumerated()), id: \.offset) { _, entry in
+                            Text(entry).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
                     Text("Running copy: \(Bundle.main.bundleURL.path)").textSelection(.enabled)
                     Text("Detection uses read-only accessibility queries. Apps that do not expose links remain unsupported; PickBrowser never forces their screen-reader mode.")
                 }

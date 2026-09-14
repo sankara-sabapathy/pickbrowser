@@ -8,6 +8,13 @@ enum PickBrowserMain {
     static func main() {
         let app = NSApplication.shared
         if Diagnostics.runIfRequested() { return }
+        if ApplicationInstallLocation.requiresInstallation(
+            bundleURL: Bundle.main.bundleURL,
+            homeDirectory: FileManager.default.homeDirectoryForCurrentUser
+        ) {
+            showInstallRequired(using: app)
+            return
+        }
         if let bundleID = Bundle.main.bundleIdentifier,
            let existing = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
             .filter({ !$0.isTerminated })
@@ -20,6 +27,17 @@ enum PickBrowserMain {
         app.delegate = delegate
         app.setActivationPolicy(.accessory)
         withExtendedLifetime(delegate) { app.run() }
+    }
+
+    private static func showInstallRequired(using app: NSApplication) {
+        app.setActivationPolicy(.accessory)
+        app.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = "Drag PickBrowser to Applications before opening"
+        alert.informativeText = "In the PickBrowser disk image, drag PickBrowser onto the Applications shortcut. Then eject the disk image and open PickBrowser from Applications."
+        alert.addButton(withTitle: "Quit")
+        alert.runModal()
     }
 }
 
@@ -109,6 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard model.troubleshootingEnabled || CommandLine.arguments.contains("--trace-hover") else { return }
         guard model.detectionStatus != status else { return }
         model.detectionStatus = status
+        if model.troubleshootingEnabled { model.detectionDiagnostics.record(status) }
         // Opt-in developer tracing contains only status/AX roles, never URLs or text.
         if CommandLine.arguments.contains("--trace-hover") {
             print("PickBrowser: \(status)")
@@ -145,6 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let trusted = AXIsProcessTrusted()
             if trusted != model.trusted {
                 model.trusted = trusted
+                if trusted { model.recordAccessibilityGranted() }
                 reportDetection("Accessibility \(trusted ? "enabled" : "not granted")")
                 handle(coordinator.reset())
                 installEventMonitors()

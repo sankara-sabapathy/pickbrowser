@@ -26,5 +26,8 @@ class Check(HTMLParser):
 page = (site / "index.html").read_text()
 assert '<html lang="en">' in page and 'name="viewport"' in page
 Check().feed(page)
+release_script = (site / "release.js").read_text()
+assert 'asset.name === "PickBrowser.dmg"' in release_script
+assert 'PickBrowser-macOS.zip' not in release_script
 subprocess.run(["node", "--check", str(site / "release.js")], check=True)
 print("Static website assets and JavaScript verified")
