@@ -9,8 +9,8 @@
     <key>CFBundleName</key><string>PickBrowser</string>
     <key>CFBundleDisplayName</key><string>PickBrowser</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.3.0</string>
-    <key>CFBundleVersion</key><string>0.3.0</string>
+    <key>CFBundleShortVersionString</key><string>0.3.1</string>
+    <key>CFBundleVersion</key><string>0.3.1</string>
     <key>PickBrowserReleasesURL</key><string>https://github.com/sankara-sabapathy/pickbrowser/releases</string>
     <key>SUFeedURL</key><string>https://github.com/sankara-sabapathy/pickbrowser/releases/latest/download/appcast.xml</string>
     <key>SUEnableAutomaticChecks</key><false/>

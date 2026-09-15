@@ -17,6 +17,7 @@ final class PickerPanel: NSPanel {
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         animationBehavior = .none
+        ScreenShareShield.apply(to: self)
         setAccessibilityLabel("Choose browser and profile")
     }
 

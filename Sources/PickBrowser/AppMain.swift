@@ -37,6 +37,7 @@ enum PickBrowserMain {
         alert.messageText = "Drag PickBrowser to Applications before opening"
         alert.informativeText = "In the PickBrowser disk image, drag PickBrowser onto the Applications shortcut. Then eject the disk image and open PickBrowser from Applications."
         alert.addButton(withTitle: "Quit")
+        ScreenShareShield.apply(to: alert)
         alert.runModal()
     }
 }
@@ -150,6 +151,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.title = "PickBrowser"
             window.contentView = NSHostingView(rootView: SettingsView(model: model, updates: updates))
             window.isReleasedWhenClosed = false
+            ScreenShareShield.apply(to: window)
             window.center()
             settingsWindow = window
         }
@@ -243,6 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let alert = NSAlert()
             alert.messageText = "Couldn’t copy the link"
             alert.informativeText = "The clipboard is unavailable. Please try again."
+            ScreenShareShield.apply(to: alert)
             launching = true
             alert.runModal()
             launching = false
@@ -288,6 +291,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.informativeText = message
         alert.addButton(withTitle: "Retry")
         alert.addButton(withTitle: "Cancel")
+        ScreenShareShield.apply(to: alert)
         NSApp.activate(ignoringOtherApps: true)
         launching = true
         let response = alert.runModal()
@@ -310,6 +314,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 alert.informativeText = error.localizedDescription
                 alert.addButton(withTitle: "Retry")
                 alert.addButton(withTitle: "Cancel")
+                ScreenShareShield.apply(to: alert)
                 NSApp.activate(ignoringOtherApps: true)
                 self.launching = true // Do not show hover UI behind the modal error.
                 let response = alert.runModal()

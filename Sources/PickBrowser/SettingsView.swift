@@ -118,6 +118,10 @@ struct SettingsView: View {
                 Button("Approve in Login Items…") { SMAppService.openSystemSettingsLoginItems() }
             }
             if let error = model.settingsError { Text(error).foregroundStyle(.red).font(.caption) }
+            Label("Screen-share shielding is always on", systemImage: "rectangle.slash")
+                .font(.callout)
+            Text("PickBrowser asks macOS not to capture its windows. Full-screen sharing apps may ignore this system hint; use Pause before sharing when the picker must never appear.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Divider()
             if updates.configured {
                 Toggle("Check for updates automatically", isOn: Binding(get: { updates.automaticallyChecks }, set: updates.setAutomaticallyChecks))

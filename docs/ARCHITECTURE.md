@@ -33,6 +33,8 @@ Request generation and source identity include the source PID. Moving the pointe
 
 The picker uses a nonactivating panel on the current display, including full-screen spaces. Only the actual link and panel rectangles keep it open, never their enclosing rectangle. Leaving both for 250 ms dismisses the panel; that grace period permits traversal across the gap. Selecting, Escape, or source scrolling suppresses that link until the pointer leaves it. Destination-list scrolling stays local. Input is observed passively; source-app clicks are not redirected or synthesized.
 
+All user-facing PickBrowser windows set `NSWindow.sharingType` to `.none`. This can omit them from capture systems that still honor the AppKit hint, but it is not a guarantee on modern macOS and does not affect a capturer's ScreenCaptureKit filter. The app deliberately does not request Screen Recording permission or use private APIs to infer capture state. Pausing resets the hover coordinator and dismisses the picker, providing the reliable manual screen-sharing mode.
+
 Placement uses the current cursor at presentation, not the start of the link rectangle. It tries nearby quadrants, clamps within the pointer display's visible frame, and reduces the panel if necessary on unusually small displays. It does not chase the cursor after opening. Background opacity is separate from foreground content; custom tint uses a material backing and contrast-aware text. Reduce Transparency uses an opaque background.
 
 ## Profiles and launching

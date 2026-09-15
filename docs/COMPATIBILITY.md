@@ -2,6 +2,13 @@
 
 This initial implementation is **not yet certified against real source applications**. Installation or compilation is not a passing hover test. Record the macOS, source-app, and destination-browser versions for every run. Use a packaged `.app` with Accessibility access enabled.
 
+## v0.3.1 screen-sharing behavior — 2026-09-16
+
+- Picker, settings, installation guidance, and error alerts use AppKit's non-shareable window hint by default.
+- Apple documents that hint as legacy; full-display ScreenCaptureKit, conferencing apps, screenshots, or remote-desktop capture may still include PickBrowser. No universal app-side exclusion is claimed.
+- Pause dismisses an existing picker and prevents new hover detection. Use it before sharing for the reliable behavior; resume afterwards.
+- PickBrowser does not request Screen Recording access or inspect capture sessions. Manual acceptance must test window-only and entire-display sharing with the actual conferencing tools in use.
+
 ## v0.3 distribution and detection verification — 2026-09-14
 
 - The release produces a DMG for first-time installation while retaining the ZIP as Sparkle's signed update enclosure.
