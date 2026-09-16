@@ -6,6 +6,8 @@ import PickBrowserCore
 struct SettingsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var updates = AppUpdater()
+    @FocusState private var focusedNicknameID: String?
+    @State private var savedNicknameID: String?
 
     var body: some View {
         ScrollView {
@@ -21,24 +23,44 @@ struct SettingsView: View {
                 Spacer()
             }
             VStack(alignment: .leading, spacing: 10) {
-                Label(model.trusted ? "Accessibility enabled" : "Allow access to detect links",
-                      systemImage: model.trusted ? "checkmark.circle.fill" : "hand.raised")
+                Label(permissionTitle, systemImage: permissionIcon)
                     .font(.headline)
                 Text("PickBrowser uses macOS Accessibility to read the link under your pointer. Links stay on your Mac and are never saved. Some apps don’t expose link destinations.")
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                if !model.trusted {
+                if accessibilityNeedsRepair {
+                    Divider()
+                    Label("Action required to restore hover detection", systemImage: "exclamationmark.triangle.fill")
+                        .font(.callout.bold())
+                        .foregroundStyle(.orange)
+                    Text("macOS no longer recognizes this copy as approved—usually after an update replaces an ad-hoc signed build, or after permission was revoked. Hover detection is off. Repair access only when this warning is visible:")
+                        .font(.callout).fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("1. Open Accessibility Settings.")
+                        Text("2. Remove old PickBrowser entries with the minus button.")
+                        Text("3. Add /Applications/PickBrowser.app, then turn it on.")
+                        Text("4. Return here. If the status does not update, quit and reopen PickBrowser.")
+                    }
+                    .font(.caption)
+                    .textSelection(.enabled)
+                    Button("Open Accessibility Settings…", action: model.requestAccessibility)
+                        .buttonStyle(.borderedProminent)
+                    Text("Why this happens: current GitHub releases are ad-hoc signed and not Apple-notarized. macOS ties Accessibility approval to an app’s code identity, which can change with an update. This warning does not mean PickBrowser requested new access; its open-source code still uses Accessibility only for link detection. Install updates only from the official project release page.")
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                } else if !model.trusted {
                     Button("Enable Accessibility", action: model.requestAccessibility)
                         .buttonStyle(.borderedProminent)
-                    if model.permissionPreviouslyGranted {
-                        Text("Access was enabled before. macOS no longer recognizes this updated copy. In Accessibility settings, remove the old PickBrowser entry and add the current copy from Applications, then quit and reopen PickBrowser. This app cannot grant itself access.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
                     Text("Enable PickBrowser in System Settings, then return here. Detection starts automatically.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
             .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+            .background(accessibilityNeedsRepair ? Color.orange.opacity(0.10) : Color(nsColor: .quaternaryLabelColor).opacity(0.10),
+                        in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                if accessibilityNeedsRepair {
+                    RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.65), lineWidth: 1)
+                }
+            }
 
             HStack {
                 Text("Destinations").font(.headline)
@@ -65,9 +87,20 @@ struct SettingsView: View {
                                 Spacer(minLength: 0)
                                 TextField("Nickname", text: nicknameBinding(for: destination.id))
                                     .textFieldStyle(.roundedBorder)
-                                    .frame(width: 120)
+                                    .frame(width: 108)
+                                    .focused($focusedNicknameID, equals: destination.id)
+                                    .onSubmit { confirmNicknameSaved(destination.id) }
                                     .help("Optional name shown in the picker. Leave blank to use \(destination.detectedTitle).")
                                     .accessibilityLabel("Nickname for \(destination.detectedTitle)")
+                                Group {
+                                    if savedNicknameID == destination.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.green)
+                                            .help(model.nickname(for: destination.id).isEmpty ? "Default name restored" : "Nickname saved")
+                                            .accessibilityLabel(model.nickname(for: destination.id).isEmpty ? "Default name restored" : "Nickname saved")
+                                    }
+                                }
+                                .frame(width: 16)
                                 Button { model.move(destination.id, by: -1) } label: { Image(systemName: "chevron.up") }
                                     .disabled(index == 0).accessibilityLabel("Move \(destination.detectedTitle) up")
                                 Button { model.move(destination.id, by: 1) } label: { Image(systemName: "chevron.down") }
@@ -182,6 +215,30 @@ struct SettingsView: View {
         .padding(24).frame(width: 480)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .onChange(of: focusedNicknameID) { previous, current in
+            if let previous, previous != current {
+                savedNicknameID = previous
+            }
+        }
+    }
+
+    private var accessibilityNeedsRepair: Bool {
+        !model.trusted && model.permissionPreviouslyGranted
+    }
+
+    private var permissionTitle: String {
+        if model.trusted { return "Accessibility enabled" }
+        return accessibilityNeedsRepair ? "Accessibility needs renewal" : "Allow access to detect links"
+    }
+
+    private var permissionIcon: String {
+        if model.trusted { return "checkmark.circle.fill" }
+        return accessibilityNeedsRepair ? "exclamationmark.triangle.fill" : "hand.raised"
+    }
+
+    private func confirmNicknameSaved(_ id: String) {
+        savedNicknameID = id
+        focusedNicknameID = nil
     }
 
     private var pickerOpacity: Binding<Double> {
@@ -202,7 +259,10 @@ struct SettingsView: View {
 
     private func nicknameBinding(for id: String) -> Binding<String> {
         Binding(get: { model.nickname(for: id) },
-                set: { model.setNickname($0, for: id) })
+                set: {
+                    savedNicknameID = nil
+                    model.setNickname($0, for: id)
+                })
     }
 
     private var useCustomBackgroundColor: Binding<Bool> {

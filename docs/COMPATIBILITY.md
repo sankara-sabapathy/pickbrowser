@@ -5,6 +5,7 @@ This initial implementation is **not yet certified against real source applicati
 ## Destination nickname and widget-size behavior
 
 - Give Chrome, Edge, Brave, and Safari destinations distinct nicknames, then confirm the picker uses those labels while launching the original browser/profile.
+- Press Return after editing: keyboard focus leaves the field and a saved checkmark appears. Clicking elsewhere also confirms the field. Starting a new edit clears the previous confirmation.
 - Clear a nickname and confirm the detected browser/profile title returns. Refresh destinations and relaunch PickBrowser to confirm nicknames persist by stable destination ID.
 - Exercise 80%, 100%, and 140% widget sizes near every display edge and on secondary displays. The picker must remain adjacent to the pointer, keep the pointer outside its frame, and scroll long destination lists.
 
@@ -105,6 +106,7 @@ Test Safari with its normal settings and confirm it receives the URL; its extern
 - Remove a profile after discovery: selecting the stale row reports an error without creating a replacement.
 - Hide every destination: no empty hover picker; settings explains how to restore it.
 - Deny/revoke Accessibility access: detector stops; settings/menu show access is needed. Re-enable: it resumes.
+- After a previously granted ad-hoc build loses approval, confirm Settings shows the orange renewal warning, explains why, and lists remove/add/reopen recovery steps. Fresh installs must show only the normal enable-access flow.
 - Pause/resume, sleep/wake, lock/unlock: no lingering picker or stale results.
 - Check a display left of, above, and below the primary display; test links at every screen edge.
 - Check a full-screen browser and Space switching. Picker must not activate PickBrowser merely by appearing.
