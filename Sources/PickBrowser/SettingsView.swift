@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import ServiceManagement
 import PickBrowserCore
@@ -85,7 +86,7 @@ struct SettingsView: View {
                                     }
                                 }.toggleStyle(.checkbox)
                                 Spacer(minLength: 0)
-                                TextField("Nickname", text: nicknameBinding(for: destination.id))
+                                TextField("Optional nickname", text: nicknameBinding(for: destination.id))
                                     .textFieldStyle(.roundedBorder)
                                     .frame(width: 108)
                                     .focused($focusedNicknameID, equals: destination.id)
@@ -93,11 +94,19 @@ struct SettingsView: View {
                                     .help("Optional name shown in the picker. Leave blank to use \(destination.detectedTitle).")
                                     .accessibilityLabel("Nickname for \(destination.detectedTitle)")
                                 Group {
-                                    if savedNicknameID == destination.id {
+                                    if focusedNicknameID == destination.id {
+                                        Button { confirmNicknameSaved(destination.id) } label: {
+                                            Image(systemName: "checkmark.circle")
+                                        }
+                                        .buttonStyle(.plain)
+                                        .foregroundStyle(.tint)
+                                        .help("Finish editing nickname")
+                                        .accessibilityLabel("Finish editing nickname for \(destination.detectedTitle)")
+                                    } else if savedNicknameID == destination.id {
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundStyle(.green)
-                                            .help(model.nickname(for: destination.id).isEmpty ? "Default name restored" : "Nickname saved")
-                                            .accessibilityLabel(model.nickname(for: destination.id).isEmpty ? "Default name restored" : "Nickname saved")
+                                            .help(nicknameSavedMessage(for: destination.id))
+                                            .accessibilityLabel(nicknameSavedMessage(for: destination.id))
                                     }
                                 }
                                 .frame(width: 16)
@@ -112,6 +121,18 @@ struct SettingsView: View {
                 }
                 .frame(height: min(220, CGFloat(model.destinations.count) * 43))
                 .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
+            }
+            if !model.destinations.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Optional nicknames save automatically. Press Return, click the checkmark, or click away to finish.")
+                        .foregroundStyle(.secondary)
+                    if savedNicknameID != nil {
+                        Label(savedNicknameMessage, systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                }
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
             }
             Text(model.visibleDestinations.isEmpty && !model.destinations.isEmpty
                  ? "All destinations are hidden. Enable one to show the hover picker."
@@ -216,9 +237,20 @@ struct SettingsView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .onChange(of: focusedNicknameID) { previous, current in
-            if let previous, previous != current {
+            if current != nil {
+                savedNicknameID = nil
+            } else if let previous {
                 savedNicknameID = previous
             }
+        }
+        // SwiftUI can retain a focused TextField across AppKit window/app
+        // deactivation. Explicitly end native field editing so the insertion
+        // caret cannot remain active when the user clicks into another app.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { notification in
+            finishNicknameEditing(in: notification.object as? NSWindow)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            finishNicknameEditing()
         }
     }
 
@@ -237,6 +269,23 @@ struct SettingsView: View {
     }
 
     private func confirmNicknameSaved(_ id: String) {
+        savedNicknameID = id
+        focusedNicknameID = nil
+    }
+
+    private var savedNicknameMessage: String {
+        guard let id = savedNicknameID else { return "Nickname saved" }
+        return nicknameSavedMessage(for: id)
+    }
+
+    private func nicknameSavedMessage(for id: String) -> String {
+        DestinationNickname.normalized(model.nickname(for: id)) == nil
+            ? "Default destination name restored" : "Nickname saved"
+    }
+
+    private func finishNicknameEditing(in window: NSWindow? = nil) {
+        guard let id = focusedNicknameID else { return }
+        window?.makeFirstResponder(nil)
         savedNicknameID = id
         focusedNicknameID = nil
     }

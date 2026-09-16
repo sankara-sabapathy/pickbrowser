@@ -5,7 +5,7 @@ This initial implementation is **not yet certified against real source applicati
 ## Destination nickname and widget-size behavior
 
 - Give Chrome, Edge, Brave, and Safari destinations distinct nicknames, then confirm the picker uses those labels while launching the original browser/profile.
-- Press Return after editing: keyboard focus leaves the field and a saved checkmark appears. Clicking elsewhere also confirms the field. Starting a new edit clears the previous confirmation.
+- While editing, use the visible Done checkmark or press Return: keyboard focus leaves the field and a clear saved confirmation appears below the list. Clicking elsewhere also confirms the field. Click into another application and confirm the insertion caret stops blinking; returning to Settings must not silently restore text focus. Starting a new edit clears the previous confirmation.
 - Clear a nickname and confirm the detected browser/profile title returns. Refresh destinations and relaunch PickBrowser to confirm nicknames persist by stable destination ID.
 - Exercise 80%, 100%, and 140% widget sizes near every display edge and on secondary displays. The picker must remain adjacent to the pointer, keep the pointer outside its frame, and scroll long destination lists.
 

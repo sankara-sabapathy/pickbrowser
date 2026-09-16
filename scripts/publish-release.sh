@@ -6,7 +6,7 @@ MASTER_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq .objec
 if [ "$MASTER_SHA" != "$GITHUB_SHA" ]; then
   printf 'A newer commit is on master; its workflow will publish the next release.\n'; exit 0
 fi
-NOTES="Universal macOS 14+ app (Apple silicon and Intel). This release fixes nickname editing: Return now dismisses focus and a green checkmark confirms the saved name. It also replaces the quiet Accessibility recovery note with a prominent warning shown only when access was previously granted but is no longer valid, including exact recovery steps and an explanation of ad-hoc code identity. For first-time installation, download PickBrowser.dmg, open it, and drag PickBrowser onto Applications before launching. PickBrowser-macOS.zip is reserved for signed Sparkle updates. Automatic update checking is optional and off by default."
+NOTES="Universal macOS 14+ app (Apple silicon and Intel). This release fixes nickname field editing when Settings loses focus: clicking another application now explicitly ends the native AppKit field editor and stops the blinking insertion caret. Nickname editing is also clearer, with a visible Done control, concise instructions, and saved/default-name confirmation. The prominent Accessibility recovery warning remains available only when previously granted access is no longer valid. For first-time installation, download PickBrowser.dmg, open it, and drag PickBrowser onto Applications before launching. PickBrowser-macOS.zip is reserved for signed Sparkle updates. Automatic update checking is optional and off by default."
 if [ "${PICKBROWSER_SIGNING_IDENTITY:--}" = "-" ]; then
   NOTES="$NOTES
 
