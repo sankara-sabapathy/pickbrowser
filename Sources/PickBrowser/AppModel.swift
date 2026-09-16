@@ -11,6 +11,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var hoverDelay: TimeInterval
     @Published private(set) var includeNavigationLinks: Bool
     @Published private(set) var pickerAppearance: PickerAppearance
+    @Published private(set) var pickerScale: Double
     @Published var troubleshootingEnabled = false {
         didSet {
             if !troubleshootingEnabled {
@@ -24,6 +25,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var destinations: [BrowserDestination] = []
     @Published private(set) var hiddenIDs: Set<String>
     @Published private(set) var order: [String]
+    @Published private(set) var nicknames: [String: String]
     @Published private(set) var refreshing = false
     @Published var loginEnabled = SMAppService.mainApp.status == .enabled
     @Published var settingsError: String?
@@ -37,6 +39,7 @@ final class AppModel: ObservableObject {
         if trustedNow { defaults.set(true, forKey: "hadAccessibilityAccess") }
         hoverDelay = HoverTiming.validated(defaults.object(forKey: "hoverDelay") as? Double ?? HoverTiming.defaultDelay)
         includeNavigationLinks = defaults.bool(forKey: "includeNavigationLinks")
+        pickerScale = PickerSizing.validated(defaults.object(forKey: "pickerScale") as? Double ?? PickerSizing.defaultScale)
         if let data = defaults.data(forKey: "pickerAppearance"),
            let savedAppearance = try? JSONDecoder().decode(PickerAppearance.self, from: data) {
             pickerAppearance = Self.normalized(savedAppearance)
@@ -45,6 +48,7 @@ final class AppModel: ObservableObject {
         }
         hiddenIDs = Set(defaults.stringArray(forKey: "hiddenDestinations") ?? [])
         order = defaults.stringArray(forKey: "destinationOrder") ?? []
+        nicknames = defaults.dictionary(forKey: "destinationNicknames")?.compactMapValues { $0 as? String } ?? [:]
         self.destinations = destinations
     }
 
@@ -67,6 +71,12 @@ final class AppModel: ObservableObject {
 
     func resetPickerAppearance() {
         setPickerAppearance(PickerAppearance())
+        setPickerScale(PickerSizing.defaultScale)
+    }
+
+    func setPickerScale(_ scale: Double) {
+        pickerScale = PickerSizing.validated(scale)
+        defaults.set(pickerScale, forKey: "pickerScale")
     }
 
     private static func normalized(_ appearance: PickerAppearance) -> PickerAppearance {
@@ -85,7 +95,25 @@ final class AppModel: ObservableObject {
     }
 
     var visibleDestinations: [BrowserDestination] {
-        orderedDestinations.filter { !hiddenIDs.contains($0.id) }
+        orderedDestinations
+            .filter { !hiddenIDs.contains($0.id) }
+            .map { $0.withNickname(nicknames[$0.id]) }
+    }
+
+    func nickname(for id: String) -> String {
+        nicknames[id] ?? ""
+    }
+
+    func setNickname(_ value: String, for id: String) {
+        let singleLine = value.replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+        let limited = String(singleLine.prefix(DestinationNickname.maximumLength))
+        if limited.isEmpty {
+            nicknames.removeValue(forKey: id)
+        } else {
+            nicknames[id] = limited
+        }
+        defaults.set(nicknames, forKey: "destinationNicknames")
     }
 
     func refresh() {

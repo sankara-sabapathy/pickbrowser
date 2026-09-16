@@ -42,6 +42,26 @@ struct ProfileTests {
                 ["brave", "chrome", "safari"])
     }
 
+    @Test func destinationNicknameOverridesOnlyItsDisplayTitle() {
+        let application = URL(fileURLWithPath: "/Applications/Test.app")
+        let destination = BrowserDestination(id: "test:work", browserName: "Test", profileName: "Work",
+                                             applicationURL: application)
+        let renamed = destination.withNickname("  Client browsing  ")
+
+        #expect(destination.title == "Test · Work")
+        #expect(renamed.title == "Client browsing")
+        #expect(renamed.detectedTitle == destination.detectedTitle)
+        #expect(renamed.id == destination.id)
+        #expect(renamed.applicationURL == application)
+        #expect(destination.withNickname("  ").nickname == nil)
+    }
+
+    @Test func destinationNicknamesAreSingleLineAndBounded() {
+        #expect(DestinationNickname.normalized("Work\nProfile") == "Work Profile")
+        #expect(DestinationNickname.normalized(String(repeating: "x", count: 50))?.count == 40)
+        #expect(DestinationNickname.normalized(nil) == nil)
+    }
+
     @Test func launchKeepsURLAndProfileAsSeparateArguments() throws {
         try withBrowser { root, destination in
             let url = URL(string: "https://example.com/?q=$(touch%20bad)&x=%22quoted%22")!

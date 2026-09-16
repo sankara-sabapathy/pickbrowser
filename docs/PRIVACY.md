@@ -16,7 +16,7 @@ Pointer position and Escape/click/scroll events are observed only for interactio
 
 PickBrowser marks its picker, settings window, and alerts with AppKit's non-shareable window level. This is a best-effort hint for capture implementations that honor it, not a privacy boundary: [Apple documents the value as legacy](https://developer.apple.com/documentation/appkit/nswindow/sharingtype-swift.enum/none), and modern full-display capture or conferencing software may still include the final composited window. PickBrowser does not request Screen Recording permission to inspect capture sessions. Pause hover detection before sharing when link destinations or profile names must not be visible.
 
-Stored application preferences are destination IDs/order, hidden destination IDs, hover delay, navigation inclusion, background color/opacity, and whether the welcome window has been shown. Sparkle stores update-check preferences, last-check state, and skipped versions, and may cache downloaded updates. Hovered URLs and profile display names are not stored in these preferences. Destination IDs can include profile directory names such as `Profile 1`.
+Stored application preferences are destination IDs/order, hidden destination IDs, optional nicknames you enter, hover delay, navigation inclusion, picker size, background color/opacity, and whether the welcome window has been shown. Sparkle stores update-check preferences, last-check state, and skipped versions, and may cache downloaded updates. Hovered URLs and browser-provided profile display names are not stored in these preferences. Destination IDs can include profile directory names such as `Profile 1`.
 
 ## Optional updates
 

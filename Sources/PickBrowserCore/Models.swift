@@ -50,14 +50,20 @@ public struct BrowserDestination: Identifiable, Equatable {
     public let executableURL: URL?
     public let userDataURL: URL?
     public let profileDirectory: String?
+    public let nickname: String?
 
     public var title: String {
+        nickname ?? detectedTitle
+    }
+
+    public var detectedTitle: String {
         profileName.map { "\(browserName) · \($0)" } ?? browserName
     }
 
     public init(id: String, browserName: String, profileName: String? = nil,
                 applicationURL: URL, executableURL: URL? = nil,
-                userDataURL: URL? = nil, profileDirectory: String? = nil) {
+                userDataURL: URL? = nil, profileDirectory: String? = nil,
+                nickname: String? = nil) {
         self.id = id
         self.browserName = browserName
         self.profileName = profileName
@@ -65,6 +71,27 @@ public struct BrowserDestination: Identifiable, Equatable {
         self.executableURL = executableURL
         self.userDataURL = userDataURL
         self.profileDirectory = profileDirectory
+        self.nickname = DestinationNickname.normalized(nickname)
+    }
+
+    public func withNickname(_ nickname: String?) -> BrowserDestination {
+        BrowserDestination(id: id, browserName: browserName, profileName: profileName,
+                           applicationURL: applicationURL, executableURL: executableURL,
+                           userDataURL: userDataURL, profileDirectory: profileDirectory,
+                           nickname: nickname)
+    }
+}
+
+public enum DestinationNickname {
+    public static let maximumLength = 40
+
+    public static func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let singleLine = value.replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !singleLine.isEmpty else { return nil }
+        return String(singleLine.prefix(maximumLength))
     }
 }
 

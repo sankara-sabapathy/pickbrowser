@@ -6,7 +6,7 @@ MASTER_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq .objec
 if [ "$MASTER_SHA" != "$GITHUB_SHA" ]; then
   printf 'A newer commit is on master; its workflow will publish the next release.\n'; exit 0
 fi
-NOTES="Universal macOS 14+ app (Apple silicon and Intel). This release adds best-effort screen-share shielding to PickBrowser windows without requesting Screen Recording access. Because Apple treats the window-sharing exclusion as legacy, Pause remains the reliable way to prevent the picker appearing in full-display shares. For first-time installation, download PickBrowser.dmg, open it, and drag PickBrowser onto Applications before launching. PickBrowser-macOS.zip is reserved for signed Sparkle updates. Automatic update checking is optional and off by default."
+NOTES="Universal macOS 14+ app (Apple silicon and Intel). This release adds optional nicknames for browser destinations and an 80–140% widget-size control in Settings. Nicknames affect only the label shown in PickBrowser; profile launching continues to use the detected browser and stable profile identifier. For first-time installation, download PickBrowser.dmg, open it, and drag PickBrowser onto Applications before launching. PickBrowser-macOS.zip is reserved for signed Sparkle updates. Automatic update checking is optional and off by default."
 if [ "${PICKBROWSER_SIGNING_IDENTITY:--}" = "-" ]; then
   NOTES="$NOTES
 

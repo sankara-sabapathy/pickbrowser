@@ -2,6 +2,12 @@
 
 This initial implementation is **not yet certified against real source applications**. Installation or compilation is not a passing hover test. Record the macOS, source-app, and destination-browser versions for every run. Use a packaged `.app` with Accessibility access enabled.
 
+## Destination nickname and widget-size behavior
+
+- Give Chrome, Edge, Brave, and Safari destinations distinct nicknames, then confirm the picker uses those labels while launching the original browser/profile.
+- Clear a nickname and confirm the detected browser/profile title returns. Refresh destinations and relaunch PickBrowser to confirm nicknames persist by stable destination ID.
+- Exercise 80%, 100%, and 140% widget sizes near every display edge and on secondary displays. The picker must remain adjacent to the pointer, keep the pointer outside its frame, and scroll long destination lists.
+
 ## v0.3.1 screen-sharing behavior — 2026-09-16
 
 - Picker, settings, installation guidance, and error alerts use AppKit's non-shareable window hint by default.

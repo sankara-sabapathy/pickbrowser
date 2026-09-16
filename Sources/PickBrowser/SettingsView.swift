@@ -59,14 +59,19 @@ struct SettingsView: View {
                                                      set: { model.setVisible($0, id: destination.id) })) {
                                     HStack(spacing: 8) {
                                         DestinationIcon(destination: destination)
-                                        Text(destination.title).lineLimit(1).help(destination.title)
+                                        Text(destination.detectedTitle).lineLimit(1).help(destination.detectedTitle)
                                     }
                                 }.toggleStyle(.checkbox)
                                 Spacer(minLength: 0)
+                                TextField("Nickname", text: nicknameBinding(for: destination.id))
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 120)
+                                    .help("Optional name shown in the picker. Leave blank to use \(destination.detectedTitle).")
+                                    .accessibilityLabel("Nickname for \(destination.detectedTitle)")
                                 Button { model.move(destination.id, by: -1) } label: { Image(systemName: "chevron.up") }
-                                    .disabled(index == 0).accessibilityLabel("Move \(destination.title) up")
+                                    .disabled(index == 0).accessibilityLabel("Move \(destination.detectedTitle) up")
                                 Button { model.move(destination.id, by: 1) } label: { Image(systemName: "chevron.down") }
-                                    .disabled(index == model.destinations.count - 1).accessibilityLabel("Move \(destination.title) down")
+                                    .disabled(index == model.destinations.count - 1).accessibilityLabel("Move \(destination.detectedTitle) down")
                             }.padding(.vertical, 7).padding(.horizontal, 8)
                             if index < model.destinations.count - 1 { Divider() }
                         }
@@ -98,6 +103,15 @@ struct SettingsView: View {
             DisclosureGroup("Appearance") {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
+                        Text("Widget size")
+                        Spacer()
+                        Text(model.pickerScale, format: .percent.precision(.fractionLength(0)))
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: Binding(get: { model.pickerScale }, set: model.setPickerScale),
+                           in: PickerSizing.scaleRange, step: 0.05)
+                        .accessibilityLabel("Picker widget size")
+                    HStack {
                         Text("Background opacity")
                         Spacer()
                         Text(model.pickerAppearance.opacity, format: .percent.precision(.fractionLength(0)))
@@ -109,7 +123,7 @@ struct SettingsView: View {
                     if model.pickerAppearance.usesCustomColor {
                         ColorPicker("Background color", selection: pickerBackgroundColor, supportsOpacity: false)
                     }
-                    Button("Reset appearance", action: model.resetPickerAppearance)
+                    Button("Reset appearance and size", action: model.resetPickerAppearance)
                 }
                 .padding(.top, 6)
             }
@@ -184,6 +198,11 @@ struct SettingsView: View {
                 ))
             }
         )
+    }
+
+    private func nicknameBinding(for id: String) -> Binding<String> {
+        Binding(get: { model.nickname(for: id) },
+                set: { model.setNickname($0, for: id) })
     }
 
     private var useCustomBackgroundColor: Binding<Bool> {

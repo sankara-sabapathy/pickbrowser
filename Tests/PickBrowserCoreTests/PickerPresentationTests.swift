@@ -78,6 +78,14 @@ struct PickerPresentationTests {
         #expect(bounded.opacity == PickerAppearance.opacityRange.lowerBound)
     }
 
+    @Test func widgetSizingDefaultsClampsAndScalesThePanel() {
+        #expect(PickerSizing.validated(.nan) == 1)
+        #expect(PickerSizing.validated(0.2) == 0.8)
+        #expect(PickerSizing.validated(2) == 1.4)
+        #expect(PickerSizing.panelSize(destinationCount: 4, scale: 1) == CGSize(width: 320, height: 238))
+        #expect(PickerSizing.panelSize(destinationCount: 20, scale: 1.25) == CGSize(width: 400, height: 455))
+    }
+
     @Test func customTintContrastAccountsForOpacityAndAccessibility() {
         let black = PickerAppearance(usesCustomColor: true, red: 0, green: 0, blue: 0, opacity: 0.35)
         #expect(!black.prefersLightText(darkMode: false, reduceTransparency: false))

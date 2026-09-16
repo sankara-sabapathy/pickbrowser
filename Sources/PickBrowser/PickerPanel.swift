@@ -24,6 +24,7 @@ final class PickerPanel: NSPanel {
     func present(link: LinkCandidate,
                  destinations: [BrowserDestination],
                  appearance: PickerAppearance,
+                 scale: Double,
                  quickOpenTitle: String?,
                  choose: @escaping (BrowserDestination) -> Void,
                  copy: @escaping () -> Bool,
@@ -31,12 +32,13 @@ final class PickerPanel: NSPanel {
         let pointer = NSEvent.mouseLocation
         let screen = NSScreen.screens.first(where: { $0.frame.contains(pointer) }) ?? NSScreen.main
         guard let screen else { return }
-        let height = CGFloat(58 + min(max(destinations.count, 1), 7) * 42 + 12)
-        let frame = PickerPlacement.frame(size: CGSize(width: 320, height: height), cursor: pointer, screen: screen.visibleFrame)
+        let size = PickerSizing.panelSize(destinationCount: destinations.count, scale: scale)
+        let frame = PickerPlacement.frame(size: size, cursor: pointer, screen: screen.visibleFrame)
         guard !frame.isEmpty else { return }
         contentView = NSHostingView(rootView: PickerView(link: link,
                                                          destinations: destinations,
                                                          appearance: appearance,
+                                                         scale: scale,
                                                          quickOpenTitle: quickOpenTitle,
                                                          choose: choose,
                                                          copy: copy,

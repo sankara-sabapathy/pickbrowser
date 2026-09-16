@@ -204,6 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let sourceBrowser = SourceBrowser.forWebpage(link)
                 picker.present(link: link, destinations: model.visibleDestinations,
                     appearance: model.pickerAppearance,
+                    scale: model.pickerScale,
                     quickOpenTitle: sourceBrowser?.name,
                     choose: { [weak self] destination in self?.choose(destination, link: link) },
                     copy: { [weak self] in self?.copyLink(link) ?? false },
