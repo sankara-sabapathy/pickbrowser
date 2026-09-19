@@ -26,7 +26,7 @@ final class PickerPanel: NSPanel {
                  appearance: PickerAppearance,
                  scale: Double,
                  quickOpenTitle: String?,
-                 choose: @escaping (BrowserDestination) -> Void,
+                 choose: @escaping (BrowserDestination, BrowserOpenMode) -> Void,
                  copy: @escaping () -> Bool,
                  quickOpen: @escaping () -> Void) {
         let pointer = NSEvent.mouseLocation

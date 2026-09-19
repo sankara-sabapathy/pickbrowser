@@ -39,9 +39,12 @@ struct MacBrowserCatalog: BrowserCatalog {
 }
 
 final class MacBrowserLauncher: BrowserLauncher {
-    func open(_ url: URL, in destination: BrowserDestination,
+    func open(_ url: URL, in destination: BrowserDestination, mode: BrowserOpenMode,
               completion: @escaping (Result<Void, Error>) -> Void) {
         guard WebURL.validated(url.absoluteString) != nil else { completion(.failure(LaunchError.invalidURL)); return }
+        guard mode == .normal || destination.supportsPrivateBrowsing else {
+            completion(.failure(LaunchError.privateModeUnavailable)); return
+        }
         if destination.profileDirectory == nil {
             guard destination.id == "com.apple.Safari",
                   FileManager.default.fileExists(atPath: destination.applicationURL.path) else {
@@ -56,7 +59,7 @@ final class MacBrowserLauncher: BrowserLauncher {
         }
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                let command = try LaunchCommand.chromium(url: url, destination: destination)
+                let command = try LaunchCommand.chromium(url: url, destination: destination, mode: mode)
                 let process = Process()
                 process.executableURL = command.executable
                 process.arguments = command.arguments

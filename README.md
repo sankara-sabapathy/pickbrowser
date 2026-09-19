@@ -43,7 +43,7 @@ PickBrowser marks its picker, settings, and alerts as non-shareable so capture t
 
 The picker appears beside the current pointer, choosing a side that fits the display. Genuine content hyperlinks qualify even when their text is not a URL. Navigation and button-like links are excluded when the application exposes those semantics; **Include navigation links** opts them in. Purely visual styling cannot be classified reliably.
 
-The small Copy icon copies the verified destination and changes to a checkmark. On supported browser webpages only, the tab icon sends the link to that same browser; its external-link settings control the tab and profile. Use a destination row for explicit Chromium profile selection. **Appearance** adjusts widget size and the translucent background's opacity and optional color without fading the text; macOS Reduce Transparency is respected.
+The small Copy icon copies the verified destination and changes to a checkmark. On supported browser webpages only, the tab icon sends the link to that same browser; its external-link settings control the tab and profile. Click a destination row for a normal launch in that profile, or its eye-slash button to request a private window in Chrome, Edge (InPrivate), or Brave. Safari has no private shortcut because PickBrowser cannot reliably direct an external URL into Safari Private Browsing. Browser policy may disable private windows; verify the result in the browser. **Appearance** adjusts widget size and the translucent background's opacity and optional color without fading the text; macOS Reduce Transparency is respected.
 
 In Settings, **Check now…** checks GitHub's latest signed release; **Check for updates automatically** enables daily checks. Both the release feed and downloaded archive are verified before installation. You choose when to install; no silent updates. Builds without update signing configured offer a GitHub releases link instead. See [release setup and recovery](docs/RELEASING.md).
 
@@ -56,7 +56,7 @@ In Settings, **Check now…** checks GitHub's latest signed release; **Check for
 | Brave | Existing profiles in the standard Brave data directory |
 | Safari | Browser destination; Safari determines the profile |
 
-Open a newly installed browser once and create a profile before refreshing destinations. Guest, ephemeral, and omitted profiles are excluded. Custom user-data roots, beta/dev browser channels, Firefox, private windows, and explicit Safari profile selection are not included in v0.1. Profile names and locations are read from local metadata; browsing history and cookies are never queried.
+Open a newly installed browser once and create a profile before refreshing destinations. Guest, ephemeral, and omitted profiles are excluded. Custom user-data roots, beta/dev browser channels, Firefox, and explicit Safari profile selection are not included. Private-window dispatch is available only for the discovered Chrome, Edge, and Brave profiles. Profile names and locations are read from local metadata; browsing history and cookies are never queried.
 
 ## Privacy and permissions
 

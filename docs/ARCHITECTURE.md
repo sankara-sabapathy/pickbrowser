@@ -11,7 +11,7 @@ Packaged builds start only from `/Applications` or the current user's `Applicati
 | `LinkDetector` | Asynchronously returns a verified HTTP/HTTPS URL, source identifier, and global screen rectangle, or nil |
 | `HoverCoordinator` | Pure state machine receiving pointer, monotonic time, source, permission state, and picker bounds; emits detect/present/dismiss actions |
 | `BrowserCatalog` | Discovers local browser/profile destinations with stable IDs |
-| `BrowserLauncher` | Dispatches one URL to the selected destination and completes once with success or error |
+| `BrowserLauncher` | Dispatches one URL to the selected destination in normal or private mode and completes once with success or error |
 
 `PickBrowserCore` depends on Foundation and CoreGraphics geometry, not AppKit. The executable supplies macOS adapters, SwiftUI views, persistence, and the AppKit event loop. Link detection needs no web renderer, daemon, IPC service, or database. The optional Sparkle updater embeds its standard installation helpers and framework; it is separate from the four link-handling interfaces.
 
@@ -41,9 +41,9 @@ Placement uses the current cursor at presentation, not the start of the link rec
 
 For stable Chrome, Edge, and Brave installations, discovery reads `profile.info_cache` from their standard `Local State` files. It requires existing profile `Preferences` files, filters ephemeral/omitted/guest profiles, and rejects unsafe paths. It reads no cookies or history. Invalid or inaccessible metadata simply provides no destinations. Safari is discovered independently.
 
-Before Chromium launch, revalidate the app, executable, metadata entry, and profile directory. Pass `--user-data-dir`, `--profile-directory`, and URL as separate `Process` arguments. Do not use shell evaluation, kill an existing browser, create a profile, retry automatically, or silently switch destinations.
+Before Chromium launch, revalidate the app, executable, metadata entry, and profile directory. Pass `--user-data-dir`, `--profile-directory`, and URL as separate `Process` arguments. The private action adds `--incognito` for Chrome/Brave or `--inprivate` for Edge between the profile argument and URL; it is unavailable for Safari or unrecognized destinations and never falls back to a normal launch. Browser policy can override private-mode switches, so process success is not proof that the window is private. Do not use shell evaluation, kill an existing browser, create a profile, retry automatically, or silently switch destinations.
 
-Warm launches usually forward the URL and exit; cold launches can remain alive. Early nonzero exits produce an error. A process still alive after 1.5 seconds counts as successful dispatch. This is **not proof of page load or correct routing**; manual browser tests are required. Safari uses `NSWorkspace` with an explicit application URL. Errors offer Retry for the same destination, or Cancel. Browser stdout/stderr is discarded so URLs are not captured by PickBrowser.
+Warm launches usually forward the URL and exit; cold launches can remain alive. Early nonzero exits produce an error. A process still alive after 1.5 seconds counts as successful dispatch. This is **not proof of page load, correct routing, or private-window creation**; manual browser tests are required. Safari uses `NSWorkspace` with an explicit application URL. Errors offer Retry for the same destination and mode, or Cancel. Browser stdout/stderr is discarded so URLs are not captured by PickBrowser.
 
 The header Copy action only writes the verified URL after checking that the displayed candidate is still active. The tab shortcut appears only for supported browser sources with webpage evidence. It sends one URL through `NSWorkspace` to the exact source application, with no fallback, Apple Events, or simulated keystrokes. Browser policy controls tab/window and profile routing; this shortcut cannot promise the current profile. Destination rows retain explicit profile dispatch.
 

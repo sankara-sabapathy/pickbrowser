@@ -36,10 +36,13 @@ enum Diagnostics {
     private static func renderPreviews(to directory: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let destinations = [
-            BrowserDestination(id: "chrome:work", browserName: "Chrome", profileName: "Work", applicationURL: URL(fileURLWithPath: "/Applications/Google Chrome.app")),
-            BrowserDestination(id: "chrome:personal", browserName: "Chrome", profileName: "Personal", applicationURL: URL(fileURLWithPath: "/Applications/Google Chrome.app")),
-            BrowserDestination(id: "brave:personal", browserName: "Brave", profileName: "Personal", applicationURL: URL(fileURLWithPath: "/Applications/Brave Browser.app")),
-            BrowserDestination(id: "safari", browserName: "Safari", applicationURL: URL(fileURLWithPath: "/Applications/Safari.app"))
+            BrowserDestination(id: "com.google.Chrome:Profile 1", browserName: "Chrome", profileName: "Work",
+                               applicationURL: URL(fileURLWithPath: "/Applications/Google Chrome.app"), profileDirectory: "Profile 1"),
+            BrowserDestination(id: "com.google.Chrome:Default", browserName: "Chrome", profileName: "Personal",
+                               applicationURL: URL(fileURLWithPath: "/Applications/Google Chrome.app"), profileDirectory: "Default"),
+            BrowserDestination(id: "com.brave.Browser:Default", browserName: "Brave", profileName: "Personal",
+                               applicationURL: URL(fileURLWithPath: "/Applications/Brave Browser.app"), profileDirectory: "Default"),
+            BrowserDestination(id: "com.apple.Safari", browserName: "Safari", applicationURL: URL(fileURLWithPath: "/Applications/Safari.app"))
         ]
         let model = AppModel(defaults: UserDefaults(suiteName: "app.pickbrowser.preview.\(UUID().uuidString)")!, destinations: destinations)
         model.trusted = false

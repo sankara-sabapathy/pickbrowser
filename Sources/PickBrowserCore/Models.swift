@@ -60,6 +60,13 @@ public struct BrowserDestination: Identifiable, Equatable {
         profileName.map { "\(browserName) · \($0)" } ?? browserName
     }
 
+    public var supportsPrivateBrowsing: Bool {
+        guard profileDirectory != nil else { return false }
+        return id.hasPrefix("com.google.Chrome:") ||
+            id.hasPrefix("com.microsoft.edgemac:") ||
+            id.hasPrefix("com.brave.Browser:")
+    }
+
     public init(id: String, browserName: String, profileName: String? = nil,
                 applicationURL: URL, executableURL: URL? = nil,
                 userDataURL: URL? = nil, profileDirectory: String? = nil,
@@ -104,6 +111,11 @@ public protocol BrowserCatalog {
 }
 
 public protocol BrowserLauncher {
-    func open(_ url: URL, in destination: BrowserDestination,
+    func open(_ url: URL, in destination: BrowserDestination, mode: BrowserOpenMode,
               completion: @escaping (Result<Void, Error>) -> Void)
+}
+
+public enum BrowserOpenMode: Equatable {
+    case normal
+    case privateWindow
 }

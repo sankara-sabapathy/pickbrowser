@@ -206,7 +206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     appearance: model.pickerAppearance,
                     scale: model.pickerScale,
                     quickOpenTitle: sourceBrowser?.name,
-                    choose: { [weak self] destination in self?.choose(destination, link: link) },
+                    choose: { [weak self] destination, mode in self?.choose(destination, mode: mode, link: link) },
                     copy: { [weak self] in self?.copyLink(link) ?? false },
                     quickOpen: { [weak self] in self?.openInSourceBrowser(link) })
             case .detect(let request):
@@ -221,10 +221,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func choose(_ destination: BrowserDestination, link: LinkCandidate) {
+    private func choose(_ destination: BrowserDestination, mode: BrowserOpenMode, link: LinkCandidate) {
         guard canAct(on: link) else { return }
         handle(coordinator.dismissAndSuppress(at: NSEvent.mouseLocation, time: ProcessInfo.processInfo.systemUptime))
-        launch(link.url, destination: destination)
+        launch(link.url, destination: destination, mode: mode)
     }
 
     private func canAct(on link: LinkCandidate) -> Bool {
@@ -304,14 +304,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func launch(_ url: URL, destination: BrowserDestination) {
+    private func launch(_ url: URL, destination: BrowserDestination, mode: BrowserOpenMode) {
         launching = true
-        launcher.open(url, in: destination) { [weak self] result in
+        launcher.open(url, in: destination, mode: mode) { [weak self] result in
             guard let self else { return }
             self.launching = false
             if case .failure(let error) = result {
                 let alert = NSAlert()
-                alert.messageText = "Couldn’t open in \(destination.title)"
+                alert.messageText = mode == .privateWindow
+                    ? "Couldn’t open privately in \(destination.title)"
+                    : "Couldn’t open in \(destination.title)"
                 alert.informativeText = error.localizedDescription
                 alert.addButton(withTitle: "Retry")
                 alert.addButton(withTitle: "Cancel")
@@ -320,7 +322,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.launching = true // Do not show hover UI behind the modal error.
                 let response = alert.runModal()
                 self.launching = false
-                if response == .alertFirstButtonReturn { self.launch(url, destination: destination) }
+                if response == .alertFirstButtonReturn { self.launch(url, destination: destination, mode: mode) }
             }
         }
     }

@@ -62,11 +62,62 @@ struct ProfileTests {
         #expect(DestinationNickname.normalized(nil) == nil)
     }
 
+    @Test func privateActionIsOnlyAvailableForKnownChromiumDestinations() {
+        let application = URL(fileURLWithPath: "/Applications/Browser.app")
+        for id in ["com.google.Chrome:Default", "com.microsoft.edgemac:Profile 1", "com.brave.Browser:Default"] {
+            let destination = BrowserDestination(id: id, browserName: "Browser", applicationURL: application,
+                                                 profileDirectory: "Default")
+            #expect(destination.supportsPrivateBrowsing)
+        }
+        #expect(!BrowserDestination(id: "com.apple.Safari", browserName: "Safari",
+                                    applicationURL: application).supportsPrivateBrowsing)
+        #expect(!BrowserDestination(id: "unknown:Default", browserName: "Unknown",
+                                    applicationURL: application, profileDirectory: "Default").supportsPrivateBrowsing)
+    }
+
     @Test func launchKeepsURLAndProfileAsSeparateArguments() throws {
         try withBrowser { root, destination in
             let url = URL(string: "https://example.com/?q=$(touch%20bad)&x=%22quoted%22")!
             let command = try LaunchCommand.chromium(url: url, destination: destination)
             #expect(command.arguments == ["--user-data-dir=\(root.path)", "--profile-directory=Profile 1", url.absoluteString])
+        }
+    }
+
+    @Test func privateLaunchUsesBrowserSpecificSwitchAfterProfileAndBeforeURL() throws {
+        let url = URL(string: "https://example.com/private?q=one%20two")!
+        for (id, flag) in [("com.google.Chrome:Profile 1", "--incognito"),
+                           ("com.microsoft.edgemac:Profile 1", "--inprivate"),
+                           ("com.brave.Browser:Profile 1", "--incognito")] {
+            try withBrowser(id: id) { root, destination in
+                let command = try LaunchCommand.chromium(url: url, destination: destination, mode: .privateWindow)
+                #expect(command.arguments == ["--user-data-dir=\(root.path)",
+                                              "--profile-directory=Profile 1", flag, url.absoluteString])
+            }
+        }
+    }
+
+    @Test func privateLaunchCannotFallBackToUnrecognizedDestination() throws {
+        try withBrowser { _, destination in
+            do {
+                _ = try LaunchCommand.chromium(url: URL(string: "https://example.com")!,
+                                               destination: destination, mode: .privateWindow)
+                Issue.record("Unknown browser should not receive a private launch command")
+            } catch {
+                #expect(error as? LaunchError == .privateModeUnavailable)
+            }
+        }
+    }
+
+    @Test func privateLaunchStillRejectsRemovedProfile() throws {
+        try withBrowser(id: "com.google.Chrome:Profile 1") { root, destination in
+            try FileManager.default.removeItem(at: root.appendingPathComponent("Profile 1/Preferences"))
+            do {
+                _ = try LaunchCommand.chromium(url: URL(string: "https://example.com")!,
+                                               destination: destination, mode: .privateWindow)
+                Issue.record("Removed profile should not be recreated for a private launch")
+            } catch {
+                #expect(error as? LaunchError == .missingProfile)
+            }
         }
     }
 
@@ -100,13 +151,13 @@ struct ProfileTests {
         }
     }
 
-    private func withBrowser(_ body: (URL, BrowserDestination) throws -> Void) throws {
+    private func withBrowser(id: String = "test:Profile 1", _ body: (URL, BrowserDestination) throws -> Void) throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("PickBrowserTests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root.appendingPathComponent("Profile 1"), withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try fixture().write(to: root.appendingPathComponent("Local State"))
         try Data("{}".utf8).write(to: root.appendingPathComponent("Profile 1/Preferences"))
-        let destination = BrowserDestination(id: "test:Profile 1", browserName: "Test", profileName: "Work",
+        let destination = BrowserDestination(id: id, browserName: "Test", profileName: "Work",
             applicationURL: root, executableURL: URL(fileURLWithPath: "/usr/bin/true"), userDataURL: root, profileDirectory: "Profile 1")
         try body(root, destination)
     }

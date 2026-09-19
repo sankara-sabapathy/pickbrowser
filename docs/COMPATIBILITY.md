@@ -83,6 +83,8 @@ For Chrome, Edge, and Brave, create two clearly named test profiles with distinc
 
 Test Safari with its normal settings and confirm it receives the URL; its external-link profile routing remains Safari's responsibility. A successful process start alone is not routing verification.
 
+For each discovered Chrome, Edge, and Brave profile, click the private icon with the browser both closed and running. Confirm exactly one URL opens in a visibly private/InPrivate window associated with the selected profile; the normal row action must remain normal. Test a browser policy that disables private browsing and do not treat a successful process exit as proof of privacy. Safari must not show the private icon. Delete a profile after discovery and confirm the private action reports an error instead of recreating it or opening a normal window.
+
 ## Interaction checklist
 
 - Open the public DMG and confirm Finder shows PickBrowser on the left and Applications on the right. Drag to Applications, eject, and launch the copied app from Spotlight.

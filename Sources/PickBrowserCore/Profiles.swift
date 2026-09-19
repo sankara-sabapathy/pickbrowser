@@ -27,8 +27,8 @@ public enum ProfileMetadata {
     }
 }
 
-public enum LaunchError: LocalizedError {
-    case invalidURL, missingApplication, missingProfile, unavailableExecutable, failed(Int32)
+public enum LaunchError: LocalizedError, Equatable {
+    case invalidURL, missingApplication, missingProfile, unavailableExecutable, privateModeUnavailable, failed(Int32)
 
     public var errorDescription: String? {
         switch self {
@@ -36,6 +36,7 @@ public enum LaunchError: LocalizedError {
         case .missingApplication: return "This browser is no longer installed. Refresh destinations in Settings."
         case .missingProfile: return "This profile is no longer available. Refresh destinations in Settings."
         case .unavailableExecutable: return "This browser could not be launched. Check its installation."
+        case .privateModeUnavailable: return "A private window is not available for this destination. Choose a Chrome, Edge, or Brave profile."
         case .failed(let code): return "The browser could not open the link (exit \(code))."
         }
     }
@@ -46,8 +47,12 @@ public struct LaunchCommand: Equatable {
     public let arguments: [String]
 
     public static func chromium(url: URL, destination: BrowserDestination,
+                                mode: BrowserOpenMode = .normal,
                                 fileManager: FileManager = .default) throws -> LaunchCommand {
         guard WebURL.validated(url.absoluteString) != nil else { throw LaunchError.invalidURL }
+        if mode == .privateWindow && !destination.supportsPrivateBrowsing {
+            throw LaunchError.privateModeUnavailable
+        }
         guard fileManager.fileExists(atPath: destination.applicationURL.path) else {
             throw LaunchError.missingApplication
         }
@@ -63,8 +68,12 @@ public struct LaunchCommand: Equatable {
               ProfileMetadata.parse(data).contains(where: { $0.directory == directory }) else {
             throw LaunchError.missingProfile
         }
-        return LaunchCommand(executable: executable,
-                             arguments: ["--user-data-dir=\(root.path)", "--profile-directory=\(directory)", url.absoluteString])
+        var arguments = ["--user-data-dir=\(root.path)", "--profile-directory=\(directory)"]
+        if mode == .privateWindow {
+            arguments.append(destination.id.hasPrefix("com.microsoft.edgemac:") ? "--inprivate" : "--incognito")
+        }
+        arguments.append(url.absoluteString)
+        return LaunchCommand(executable: executable, arguments: arguments)
     }
 }
 

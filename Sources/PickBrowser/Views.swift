@@ -23,7 +23,7 @@ struct PickerView: View {
     let appearance: PickerAppearance
     let scale: Double
     let quickOpenTitle: String?
-    let choose: (BrowserDestination) -> Void
+    let choose: (BrowserDestination, BrowserOpenMode) -> Void
     let copy: () -> Bool
     let quickOpen: () -> Void
 
@@ -32,7 +32,7 @@ struct PickerView: View {
          appearance: PickerAppearance = .default,
          scale: Double = PickerSizing.defaultScale,
          quickOpenTitle: String? = nil,
-         choose: @escaping (BrowserDestination) -> Void = { _ in },
+         choose: @escaping (BrowserDestination, BrowserOpenMode) -> Void = { _, _ in },
          copy: @escaping () -> Bool = { false },
          quickOpen: @escaping () -> Void = {}) {
         self.link = link
@@ -52,9 +52,9 @@ struct PickerView: View {
             ScrollView {
                 VStack(spacing: 2 * scaled) {
                     ForEach(destinations) { destination in
-                        DestinationButton(destination: destination, foreground: foreground, scale: scaled) {
-                            choose(destination)
-                        }
+                        DestinationButton(destination: destination, foreground: foreground, scale: scaled,
+                                          open: { choose(destination, .normal) },
+                                          openPrivately: { choose(destination, .privateWindow) })
                     }
                 }
                 .padding(6 * scaled)
@@ -137,33 +137,50 @@ private struct DestinationButton: View {
     let destination: BrowserDestination
     let foreground: Color
     let scale: CGFloat
-    let action: () -> Void
+    let open: () -> Void
+    let openPrivately: () -> Void
     @State private var hovered = false
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10 * scale) {
-                DestinationIcon(destination: destination, size: 26 * scale)
-                Text(destination.title)
-                    .font(.system(size: 13 * scale, weight: .medium))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-                if hovered {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 11 * scale))
-                        .foregroundStyle(foreground.opacity(0.7))
+        HStack(spacing: 2 * scale) {
+            Button(action: open) {
+                HStack(spacing: 10 * scale) {
+                    DestinationIcon(destination: destination, size: 26 * scale)
+                    Text(destination.title)
+                        .font(.system(size: 13 * scale, weight: .medium))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
+                    if hovered {
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 11 * scale))
+                            .foregroundStyle(foreground.opacity(0.7))
+                    }
                 }
+                .padding(.leading, 9 * scale)
+                .frame(height: 40 * scale)
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 9 * scale)
-            .frame(height: 40 * scale)
-            .background(hovered ? Color.accentColor.opacity(0.18) : .clear,
-                        in: RoundedRectangle(cornerRadius: 8 * scale))
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .help("Open in \(destination.title)")
+            .accessibilityLabel("Open link in \(destination.title)")
+            if destination.supportsPrivateBrowsing {
+                Button(action: openPrivately) {
+                    Image(systemName: "eye.slash")
+                        .font(.system(size: 13 * scale, weight: .medium))
+                        .frame(width: 36 * scale, height: 36 * scale)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Open privately in \(destination.title)")
+                .accessibilityLabel("Open link privately in \(destination.title)")
+                .accessibilityHint("Opens a private or InPrivate window in the selected browser profile")
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.trailing, 4 * scale)
+        .background(hovered ? Color.accentColor.opacity(0.18) : .clear,
+                    in: RoundedRectangle(cornerRadius: 8 * scale))
         .onHover { hovered = $0 }
-        .help("Open in \(destination.title)")
-        .accessibilityLabel("Open link in \(destination.title)")
     }
 }

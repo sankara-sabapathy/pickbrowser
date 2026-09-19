@@ -6,7 +6,7 @@ MASTER_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq .objec
 if [ "$MASTER_SHA" != "$GITHUB_SHA" ]; then
   printf 'A newer commit is on master; its workflow will publish the next release.\n'; exit 0
 fi
-NOTES="Universal macOS 14+ app (Apple silicon and Intel). This release fixes nickname field editing when Settings loses focus: clicking another application now explicitly ends the native AppKit field editor and stops the blinking insertion caret. Nickname editing is also clearer, with a visible Done control, concise instructions, and saved/default-name confirmation. The prominent Accessibility recovery warning remains available only when previously granted access is no longer valid. For first-time installation, download PickBrowser.dmg, open it, and drag PickBrowser onto Applications before launching. PickBrowser-macOS.zip is reserved for signed Sparkle updates. Automatic update checking is optional and off by default."
+NOTES="Universal macOS 14+ app (Apple silicon and Intel). This release adds an Open privately action beside Chrome, Edge, and Brave profile destinations. It uses the selected profile with each browser's private-window switch and never falls back to a normal destination on a launch error. Safari remains normal-only because macOS does not offer reliable external private-window routing. Browser policies can disable private windows, so verify the result in the browser. For first-time installation, download PickBrowser.dmg, open it, and drag PickBrowser onto Applications before launching. PickBrowser-macOS.zip is reserved for signed Sparkle updates. Automatic update checking is optional and off by default."
 if [ "${PICKBROWSER_SIGNING_IDENTITY:--}" = "-" ]; then
   NOTES="$NOTES
 

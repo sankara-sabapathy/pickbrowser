@@ -26,4 +26,6 @@ The download website also fetches public GitHub release metadata to show the cur
 
 When you select a destination, the URL is passed to that browser. Browser history, network requests, and OS process inspection are outside PickBrowser's control. Browser stdout/stderr is discarded. Launch errors contain no intentional URL logging.
 
+The private-window action sends the same URL to Chrome, Edge, or Brave with that browser's private-mode command-line option. PickBrowser does not inspect the resulting browser window and cannot override enterprise policies that disable private browsing. Private browsing is not network anonymity: websites, your network provider, and managed devices may still observe activity. Safari has no private-window action because external private-window routing is not reliable.
+
 Quit PickBrowser to stop observation. Disable launch at login before removing the app, and revoke its Accessibility entry in System Settings if desired. No browser data is changed or deleted by uninstalling PickBrowser.
